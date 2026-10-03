@@ -1,0 +1,450 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Daehee Koo — Curriculum Vitae. Experience, education, awards, projects, and invited talks.">
+    <title>CV - Daehee Koo</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 25mm 25mm; /* 상하좌우 모두 25mm로 통일하여 여백을 넉넉하고 균형 있게 조정했습니다 */
+            @bottom-right {
+                content: counter(page);
+                font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+                font-size: 9pt;
+                color: #777777;
+            }
+        }
+        
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            color: #333333;
+            line-height: 1.5;
+            font-size: 10.5pt;
+            margin: 0;
+            padding: 0;
+        }
+
+        h1 {
+            font-size: 24pt;
+            font-weight: 700;
+            margin: 0 0 8px 0;
+            text-align: center;
+            letter-spacing: -0.5px;
+            color: #111111;
+        }
+
+        .contact-info {
+            text-align: center;
+            font-size: 10pt;
+            margin-bottom: 35px;
+            color: #555555;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .contact-info a {
+            color: #0056b3;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .contact-info a:hover {
+            text-decoration: underline;
+        }
+
+        h2 {
+            font-size: 13pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #111111;
+            margin: 35px 0 15px 0;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #222222;
+            page-break-after: avoid;
+        }
+
+        .interests-text {
+            font-size: 10.5pt;
+            margin: 0 0 15px 0;
+        }
+
+        table.entry {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 22px;
+            page-break-inside: avoid;
+        }
+
+        table.entry td {
+            padding: 0;
+            vertical-align: top;
+        }
+
+        .title-left {
+            font-size: 11pt;
+            color: #111111;
+            text-align: left;
+        }
+
+        .title-wrapper {
+            display: inline-flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .title-text {
+            font-weight: bold;
+        }
+
+        .title-links {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .title-links a {
+            display: inline-flex;
+            align-items: center;
+            text-decoration: none;
+            opacity: 0.85;
+        }
+
+        .title-links a:hover {
+            opacity: 1;
+        }
+
+        .title-right {
+            text-align: right;
+            font-size: 10pt;
+            color: #555555;
+            font-weight: 500;
+        }
+
+        .subtitle-left {
+            font-style: italic;
+            font-size: 10pt;
+            color: #444444;
+            padding-top: 4px;
+        }
+
+        .subtitle-right {
+            text-align: right;
+            font-style: italic;
+            font-size: 10pt;
+            color: #666666;
+            padding-top: 4px;
+        }
+
+        .details {
+            margin: 8px 0 0 0;
+            padding-left: 18px;
+            font-size: 10pt;
+            color: #333333;
+        }
+
+        .details li {
+            margin-bottom: 5px;
+        }
+
+        .icon-svg {
+            vertical-align: middle;
+            fill: #0056b3;
+        }
+
+        @media screen {
+            html { background: #f4f5f7; }
+            body { max-width: 920px; margin: 40px auto; padding: 52px 60px; background: white; border: 1px solid #e5e7eb; border-radius: 8px; }
+            .contact-info { flex-wrap: wrap; }
+            .download { text-align: center; margin: -14px 0 32px; }
+            .download a { display: inline-block; color: #0056b3; border: 1px solid #b9cde2; border-radius: 5px; padding: 7px 14px; text-decoration: none; font-size: 10pt; }
+            .download a:hover { background: #eff6ff; }
+            a:focus-visible { outline: 2px solid #0056b3; outline-offset: 3px; }
+            .title-right { width: 32%; padding-left: 16px; }
+        }
+        @media screen and (max-width: 600px) {
+            body { margin: 0; padding: 30px 20px; border: 0; border-radius: 0; }
+            h1 { font-size: 24pt; }
+            .contact-info { gap: 6px; margin-bottom: 28px; }
+            table.entry, table.entry tbody, table.entry tr, table.entry td { display: block; width: 100%; }
+            table.entry .title-right, table.entry .subtitle-right { text-align: left; padding-left: 0; padding-top: 4px; }
+            .details { margin-top: 10px; }
+        }
+        @media print { .download { display: none; } }
+    </style>
+</head>
+<body>
+
+    <h1>Daehee Koo</h1>
+    <div class="contact-info">
+        <a href="mailto:goodday@unist.ac.kr">
+            <svg class="icon-svg" height="14" width="14" viewBox="0 0 24 24">
+                <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+            </svg>
+            goodday@unist.ac.kr
+        </a>
+        &nbsp;|&nbsp; 
+        <a href="https://github.com/DH-Koo" target="_blank" rel="noopener noreferrer">
+            <svg class="icon-svg" height="14" width="14" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+            DH-Koo
+        </a>
+    </div>
+
+    <div class="download"><a href="CV_DaeheeKoo.pdf" download>Download CV (PDF)</a></div>
+
+    <h2>Experience</h2>
+
+    <table class="entry">
+        <tr>
+            <td class="title-left">
+                <div class="title-wrapper">
+                    <span class="title-text">CJ AI Center</span>
+                </div>
+            </td>
+            <td class="title-right">Feb 2026 – Present</td>
+        </tr>
+        <tr>
+            <td class="subtitle-left">Research Intern | K-Drama Analysis Group</td>
+        </tr>
+        <tr>
+            <td colspan="2">
+                <ul class="details">
+                    <li>Research on Efficient LLMs, Reliable LLMs, and Long-context LLMs.</li>
+                </ul>
+            </td>
+        </tr>
+    </table>
+
+    <table class="entry">
+        <tr>
+            <td class="title-left">
+                <div class="title-wrapper">
+                    <span class="title-text">Ergolab, UNIST</span>
+                </div>
+            </td>
+            <td class="title-right">Jul 2025 – Dec 2025</td>
+        </tr>
+        <tr>
+            <td class="subtitle-left">Undergraduate Research Intern (Advisor: Prof. Gwanseob Shin)</td>
+        </tr>
+        <tr>
+            <td colspan="2">
+                <ul class="details">
+                    <li>Researched Medical AI frameworks focused on clinical disease prediction.</li>
+                </ul>
+            </td>
+        </tr>
+    </table>
+
+    <table class="entry">
+        <tr>
+            <td class="title-left">
+                <div class="title-wrapper">
+                    <span class="title-text">Uniway</span>
+                    <span class="title-links">
+                        <a href="https://play.google.com/store/apps/details?id=com.dolphindev.uniway&hl=en" target="_blank" rel="noopener noreferrer" title="Project Document">
+                            <svg class="icon-svg" height="14" width="14" viewBox="0 0 16 16"><path d="M4.715 6.542 3.343 7.914a3 3 0 1 0 4.243 4.243l1.828-1.829A3 3 0 0 0 8.586 5.5L8 6.086a1.002 1.002 0 0 0-.154.199 2 2 0 0 1 .861 3.337L6.88 11.45a2 2 0 1 1-2.83-2.83l.793-.792a4.018 4.018 0 0 1-.128-1.287z"/><path d="M6.586 4.672A3 3 0 0 0 7.414 9.5l.586-.586a1.003 1.003 0 0 0 .154-.199 2 2 0 0 1-.861-3.337L9.12 3.55a2 2 0 1 1 2.83 2.83l-.793.792a4.018 4.018 0 0 1 .128 1.287l1.372-1.372a3 3 0 1 0-4.243-4.243L6.586 4.672z"/></svg>
+                        </a>
+                    </span>
+                </div>
+            </td>
+            <td class="title-right">Jul 2025 – Nov 2025</td>
+        </tr>
+        <tr>
+            <td class="subtitle-left">CEO & CTO</td>
+        </tr>
+        <tr>
+            <td colspan="2">
+                <ul class="details">
+                    <li>Service planning, full-stack development, and operations of a mobile application for UNIST students.</li>
+                    <li>Acquire over 1,000+ active users within the campus community.</li>
+                </ul>
+            </td>
+        </tr>
+    </table>
+
+    <table class="entry">
+        <tr>
+            <td class="title-left">
+                <div class="title-wrapper">
+                    <span class="title-text">Smeal</span>
+                    <span class="title-links">
+                        <a href="https://play.google.com/store/apps/details?id=com.smeal.app&hl=en" target="_blank" rel="noopener noreferrer" title="Project Document">
+                            <svg class="icon-svg" height="14" width="14" viewBox="0 0 16 16"><path d="M4.715 6.542 3.343 7.914a3 3 0 1 0 4.243 4.243l1.828-1.829A3 3 0 0 0 8.586 5.5L8 6.086a1.002 1.002 0 0 0-.154.199 2 2 0 0 1 .861 3.337L6.88 11.45a2 2 0 1 1-2.83-2.83l.793-.792a4.018 4.018 0 0 1-.128-1.287z"/><path d="M6.586 4.672A3 3 0 0 0 7.414 9.5l.586-.586a1.003 1.003 0 0 0 .154-.199 2 2 0 0 1-.861-3.337L9.12 3.55a2 2 0 1 1 2.83 2.83l-.793.792a4.018 4.018 0 0 1 .128 1.287l1.372-1.372a3 3 0 1 0-4.243-4.243L6.586 4.672z"/></svg>
+                        </a>
+                    </span>
+                </div>
+            </td>
+            <td class="title-right">Feb 2025 – Apr 2025</td>
+        </tr>
+        <tr>
+            <td class="subtitle-left">CEO & CTO</td>
+        </tr>
+        <tr>
+            <td colspan="2">
+                <ul class="details">
+                    <li>Designed, developed, and deployed a cafeteria menu and timetable application for K-12 students.</li>
+                    <li>Acquire over 300+ downloads (including Google Play Store and AppStore).</li>
+                </ul>
+            </td>
+        </tr>
+    </table>
+
+    <h2>Education</h2>
+
+    <table class="entry">
+        <tr>
+            <td class="title-left">
+                <div class="title-wrapper">
+                    <span class="title-text">UNIST</span>
+                </div>
+            </td>
+            <td class="title-right">Mar 2021 – Present</td>
+        </tr>
+        <tr>
+            <td class="subtitle-left">B.S. in Computer Science and Engineering</td>
+        </tr>
+        <tr>
+            <td colspan="2">
+                <ul class="details">
+                    <li><strong>GPA:</strong> 3.93 / 4.30 (Major GPA: 4.15 / 4.30)</li>
+                </ul>
+            </td>
+        </tr>
+    </table>
+
+    <h2>Awards & Honors</h2>
+
+    <table class="entry">
+        <tr>
+            <td class="title-left">
+                <div class="title-wrapper">
+                    <span class="title-text">약학xIT 창업 해커톤 우수상 수상</span>
+                    <span class="title-links">
+                        <a href="https://github.com/DH-Koo/kpsa-hackathon" target="_blank" rel="noopener noreferrer" title="GitHub Repository">
+                            <svg class="icon-svg" height="14" width="14" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                        </a>
+                    </span>
+                </div>
+            </td>
+            <td class="title-right">Jul 2025</td>
+        </tr>
+        <tr>
+            <td class="subtitle-left">SNU 제약바이오인력양성센터 주관</td>
+        </tr>
+        <tr>
+            <td colspan="2">
+                <ul class="details">
+                    <li>Developed an innovative music-based patient medication guidance mobile application.</li>
+                    <li>Awarded a cash prize of ₩500,000.</li>
+                </ul>
+            </td>
+        </tr>
+    </table>
+
+    <table class="entry">
+        <tr>
+            <td class="title-left">
+                <div class="title-wrapper">
+                    <span class="title-text">Academic Excellence Award</span>
+                </div>
+            </td>
+            <td class="title-right">Fall 2021, Fall 2022, Spring 2025, Fall 2025</td>
+        </tr>
+        <tr>
+            <td class="subtitle-left">UNIST</td>
+        </tr>
+        <tr>
+            <td colspan="2">
+                <ul class="details">
+                    <li>Granted a full tuition scholarship for maintaining outstanding academic records.</li>
+                </ul>
+            </td>
+        </tr>
+    </table>
+
+    <h2>Projects</h2>
+
+    <table class="entry">
+        <tr>
+            <td class="title-left">
+                <div class="title-wrapper">
+                    <span class="title-text">EMG-based Hand Gesture Classification</span>
+                    <span class="title-links">
+                        <a href="https://github.com/DH-Koo/CSE304_20211011" target="_blank" rel="noopener noreferrer" title="GitHub Repository">
+                            <svg class="icon-svg" height="14" width="14" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                        </a>
+                        <a href="https://drive.google.com/file/d/1DR30dy63BYJ7uU9B6tnHmqKD4wZeBYkV/view?usp=sharing" target="_blank" rel="noopener noreferrer" title="Project Document">
+                            <svg class="icon-svg" height="14" width="14" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                        </a>
+                    </span>
+                </div>
+            </td>
+            <td class="title-right">Mar 2025 – Jun 2025</td>
+        </tr>
+        <tr>
+            <td colspan="2">
+                <ul class="details">
+                    <li>Proposed a novel and robust gesture recognition methodology by combining Variational Autoencoders (VAE) with clustering techniques to improve accuracy under noisy signal environments.</li>
+                </ul>
+            </td>
+        </tr>
+    </table>
+
+    <table class="entry">
+        <tr>
+            <td class="title-left">
+                <div class="title-wrapper">
+                    <span class="title-text">EHR-based Length-of-Stay Prediction</span>
+                    <span class="title-links">
+                        <a href="https://github.com/DH-Koo/LOS_Prediction" target="_blank" rel="noopener noreferrer" title="GitHub Repository">
+                            <svg class="icon-svg" height="14" width="14" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                        </a>
+                        <a href="https://drive.google.com/file/d/1LXSdHFWDAefYU4YG87eeSK941-Cmr4zo/view?usp=sharing" target="_blank" rel="noopener noreferrer" title="Project Document">
+                            <svg class="icon-svg" height="14" width="14" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                        </a>
+                    </span>
+                </div>
+            </td>
+            <td class="title-right">Sep 2025 – Dec 2025</td>
+        </tr>
+        <tr>
+            <td colspan="2">
+                <ul class="details">
+                    <li>Designed and implemented an end-to-end deep learning pipeline for highly accurate patient Length-of-Stay (LOS) prediction utilizing large-scale Electronic Health Records (EHR).</li>
+                </ul>
+            </td>
+        </tr>
+    </table>
+    <h2>Invited Talks</h2>
+
+    <table class="entry">
+        <tr>
+            <td class="title-left">
+                <div class="title-wrapper">
+                    <span class="title-text">학성여자고등학교 초청 특강</span>
+                </div>
+            </td>
+            <td class="title-right">Jul 2025</td>
+        </tr>
+        <tr>
+            <td colspan="2">
+                <ul class="details">
+                    <li>Special Lecture on AI Utilization & App Development</li>
+                </ul>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
