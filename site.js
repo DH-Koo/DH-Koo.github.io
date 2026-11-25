@@ -678,8 +678,7 @@
     if (!p) return "";
     let inner;
     if (t.phones) inner = `<div class="mq-phones">${t.phones.map((src) => `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">`).join("")}</div>`;
-    else if (t.demo) inner = `<div class="mq-demo"><div class="phone mq-phone"><div class="phone-screen"><img src="${esc(t.demo)}" alt="" loading="lazy" draggable="false"></div></div>
-        <span class="mq-live"><span class="live-dot" aria-hidden="true"></span>${esc(L("liveDemo"))}</span></div>`;
+    else if (t.demo) inner = `<div class="mq-demo"><div class="phone mq-phone"><div class="phone-screen"><img src="${esc(t.demo)}" alt="" loading="lazy" draggable="false"></div></div></div>`;
     else if (t.video) inner = `<video class="mq-media" src="${esc(t.video)}" poster="${esc(t.poster || "")}" muted loop playsinline autoplay preload="metadata" aria-hidden="true"></video>`;
     else if (t.art) inner = artHTML(p, "gray");
     else inner = `<img class="mq-media${t.fit === "contain" ? " is-contain" : ""}" src="${esc(t.src)}" alt="" loading="lazy" draggable="false"${t.pos ? ` style="object-position:center ${esc(t.pos)}"` : ""}>`;

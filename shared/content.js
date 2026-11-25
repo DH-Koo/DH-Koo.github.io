@@ -26,14 +26,14 @@ window.PORTFOLIO = {
     },
     about: {
       en: [
-        "I like work where the result is visible: an app students open every day, an LLM agent built for a real content business, a model that still holds up on a person it has never seen.",
-        "Over the past two years I co-founded two mobile apps, spent six months as an AI engineer intern at CJ OliveNetworks, and did research on robot foundation models and clinical data. Running an app taught me that the code is the smaller half. What decides the outcome is finding what people need and getting it in front of them.",
-        "I'm looking for a team where I can take a problem from definition to launch, and learn the parts beyond engineering along the way."
+        "I am driven to create a meaningful impact on the world by tackling complex challenges in healthcare.",
+        "I have co-founded and run two apps, spent six months as an AI engineer in industry, and taken part in two research projects. I look for different places and different kinds of work, so that I can see the world from more than one point of view.",
+        "I want to solve hard problems in healthcare in ways that reach as many people as possible, and I am building the range of skills that takes. I'm looking for a team where I can take a problem from definition to launch, and learn the parts beyond engineering along the way."
       ],
       ko: [
-        "결과가 눈에 보이는 일을 좋아합니다. 학생들이 매일 여는 앱, 실제 콘텐츠 사업에 쓰려고 만든 LLM 에이전트, 처음 보는 사람에게도 통하는 모델 같은 것들입니다.",
-        "지난 2년 동안 모바일 앱 두 개를 공동 창업했고, CJ올리브네트웍스에서 6개월간 AI 엔지니어 인턴으로 일했으며, 로봇 파운데이션 모델과 임상 데이터를 연구했습니다. 앱을 직접 운영해 보니 코드는 절반이 안 됐습니다. 사람들이 필요로 하는 것을 찾고 그것을 알리는 일이 결과를 갈랐습니다.",
-        "문제 정의부터 출시까지 직접 끌고 갈 수 있고, 개발 바깥의 일까지 배울 수 있는 팀을 찾고 있습니다."
+        "헬스케어의 복잡한 문제를 풀어, 세상에 의미 있는 변화를 만들고 싶습니다.",
+        "두 개의 앱을 공동 창업해 운영했고, 기업에서 6개월간 AI 엔지니어로 일했으며, 두 번의 연구에 참여했습니다. 여러 곳에서 여러 종류의 일을 해 보며 세상을 다양한 관점에서 바라보려 노력하고 있습니다.",
+        "헬스케어 분야의 어려운 문제를 해결해 더 많은 사람에게 닿는 가치를 만들고 싶고, 이를 위한 역량을 넓혀 가고 있습니다. 문제 정의부터 출시까지 직접 맡아 보고, 엔지니어링 너머의 일까지 함께 배울 수 있는 팀을 찾고 있습니다."
       ]
     },
     now: {
