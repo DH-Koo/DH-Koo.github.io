@@ -265,23 +265,25 @@ html:lang(en) .live { text-transform: uppercase; }
 .mq-item:hover { z-index: 2; }
 .mq-item:hover .mq-tile { transform: scale(1.011); }
 .mq-row.is-dragging .mq-tile { pointer-events: none; }
-/* Enlarged tile: a copy laid over both rows */
-.mq-big { position: absolute; inset: auto; z-index: 20; cursor: zoom-out; box-shadow: 0 0 0 rgb(0 0 0 / 0); }
-.mq-big.is-open { box-shadow: 0 24px 60px -20px rgb(0 0 0 / 0.25); }
-.mq-big .mq-media.is-contain { padding: 5%; }
+/* Enlarged tile (see expandTile in site.js) */
+.mq-row.has-big { z-index: 3; }
+.mq-item.is-big { z-index: 5; }
+.mq-item.is-big .mq-tile { position: absolute; transform: none; box-shadow: 0 24px 60px -24px rgb(0 0 0 / 0.28); }
+.mq-item.is-big .mq-media.is-contain { padding: 5%; }
 /* Demo tiles: one phone playing the app tour; enlarged, the phone runs the live demo */
 .mq-demo { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
 .mq-phone { --bz: 6px; --rad: 22px; width: auto; height: 88%; }
 .mq-phone .phone-screen { height: 100%; width: auto; aspect-ratio: 390 / 844; }
 .mq-phone .phone-screen img { width: 100%; height: 100%; object-fit: cover; }
-.mq-big.is-demo .mq-phone { height: auto; --bz: 8px; --rad: 30px; }
-.mq-big.is-demo .mq-phone .phone-screen { height: auto; width: 100%; }
-.mq-big.is-demo { cursor: default; }
-html:lang(en) .mq-label { position: absolute; left: 16px; bottom: 16px; opacity: 0; transform: translateY(4px); transition: opacity .25s ease, transform .25s ease; }
-.mq-big.is-open .mq-label { opacity: 1; transform: none; transition-delay: .3s; }
+.mq-item.is-big .mq-phone.phone { height: auto; --bz: 8px; --rad: 30px; }
+.mq-item.is-big .mq-phone.phone .phone-screen { height: auto; width: 100%; }
+html:lang(en) .mq-label { position: absolute; left: 16px; bottom: 16px; z-index: 2; }
+.mq-item.is-big .mq-label { animation: mqLabel .3s ease .3s both; }
+@keyframes mqLabel { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .mq-label a { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 14px; border-radius: 999px; background: rgb(255 255 255 / 0.82); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); color: var(--ink); text-decoration: none; font-size: 15px; cursor: pointer; box-shadow: 0 0 0 1px rgb(0 0 0 / 0.06); }
 .mq-label a:hover { background: #fff; }
 .mq.has-open .mq-item:hover .mq-tile { transform: none; }
+.mq.has-open .mq-tile { cursor: zoom-out; }
 .mq-media { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; -webkit-user-drag: none; }
 .mq-media.is-contain { object-fit: contain; padding: 7%; }
 .mq-phones { position: absolute; inset: 0; display: flex; justify-content: center; align-items: center; gap: 5%; padding: 7% 6%; }

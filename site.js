@@ -745,7 +745,7 @@
       mq.rows.forEach((r) => {
         if (r.drag) return;
         // A released drag coasts and settles back into the drift.
-        if (mq.open) return; // rows hold still while a tile is enlarged
+        if (mq.open || mq.closing) return; // rows hold still while a tile is enlarged
         r.vel *= Math.pow(0.04, dt);
         r.x += (-r.dir * MQ_SPEED + r.vel) * dt;
         place(r);
@@ -756,7 +756,7 @@
   function wireDrag(r) {
     const row = r.row;
     row.addEventListener("pointerdown", (e) => {
-      if (e.button !== 0) return;
+      if (e.button !== 0 || mq.open || mq.closing) return;
       r.drag = { x0: e.clientX, start: r.x, moved: false, lastX: e.clientX, lastT: performance.now(), id: e.pointerId };
       r.vel = 0;
     });
@@ -788,82 +788,97 @@
     row.addEventListener("dragstart", (e) => e.preventDefault());
     row.addEventListener("click", (e) => {
       if (r.dragEnd && performance.now() - r.dragEnd < 300) { e.preventDefault(); e.stopPropagation(); return; }
+      if (e.target.closest(".mq-label a") || e.target.closest(".mq-item.is-big .phone-screen")) return; // project link, live demo
       const item = e.target.closest(".mq-item");
-      if (!item || e.metaKey || e.ctrlKey || e.shiftKey) return; // modified clicks still open the project
+      if (mq.open) { e.preventDefault(); e.stopPropagation(); collapseTile(); return; }
+      if (!item || mq.closing || e.metaKey || e.ctrlKey || e.shiftKey) return; // modified clicks still open the project
       e.preventDefault();
       expandTile(item);
     }, true);
   }
 
-  /* Click a tile: it grows in place to the height of both rows, centred, and the rows stop.
-     Its name appears as a link to the project. Click it again, click outside or press Esc to shrink it. */
+  /* Click a tile (motion measured on gabrielvaldivia.com): over 560 ms with cubic-bezier(.32,.72,0,1)
+     - the tile grows from its slot to the height of both rows (same aspect ratio);
+     - its slot slides so the tile ends up centred on screen;
+     - the other tiles in its row slide outward by the extra width, keeping the 16 px gap;
+     - the other row splits at the screen centre: each half moves to sit 16 px from the tile's edges.
+     The project name appears as a link. Click the tile again, click elsewhere or press Esc to undo. */
   const MQ_EASE = "cubic-bezier(.32,.72,0,1)", MQ_DUR = 560;
-  function tileBox(el, box) {
-    const a = el.getBoundingClientRect(), b = box.getBoundingClientRect();
-    return { left: a.left - b.left, top: a.top - b.top, width: a.width, height: a.height };
-  }
-  function setBox(el, r) { Object.assign(el.style, { left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px" }); }
   function expandTile(item) {
-    if (mq.open) { collapseTile(); return; }
-    const box = $("#mq"), tile = $(".mq-tile", item);
-    if (!box || !tile) return;
-    const from = tileBox(tile, box);
-    const ratio = parseFloat(getComputedStyle(item).getPropertyValue("--r")) || 1;
-    const bw = box.clientWidth, bh = box.clientHeight;
-    let h = bh, w = h * ratio;
-    const maxW = bw - 2 * Math.max(16, parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--pad")) || 32);
-    if (w > maxW) { w = maxW; h = Math.min(bh, w / ratio); }
-    const to = { left: (bw - w) / 2, top: (bh - h) / 2, width: w, height: h };
-    const big = tile.cloneNode(true);
-    big.classList.add("mq-big");
-    big.removeAttribute("title");
-    big.setAttribute("role", "button");
-    big.setAttribute("aria-label", `${L("close")}: ${tile.getAttribute("aria-label")}`);
-    const href = tile.getAttribute("href"), name = tile.getAttribute("aria-label");
-    big.insertAdjacentHTML("beforeend", `<span class="mq-label"><a href="${esc(href)}">${esc(name)} ${ICON.chev}</a></span>`);
-    setBox(big, from);
-    big.style.transition = "none";
-    box.appendChild(big);
-    const v = $("video", big); if (v) { v.muted = true; v.play().catch(() => {}); }
+    const box = $("#mq"), tile = $(".mq-tile", item), row = item.closest(".mq-row");
+    if (!box || !tile || !row || mq.open || mq.closing) return;
+    const rows = $$(".mq-row", box);
+    const gap = parseFloat(getComputedStyle($(".mq-track", row)).columnGap) || 16;
+    const bb = box.getBoundingClientRect(), ib = item.getBoundingClientRect();
+    const ratio = parseFloat(item.style.getPropertyValue("--r")) || ib.width / ib.height;
+    let H = bb.height, W = H * ratio;
+    const pad = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--pad")) || 32;
+    if (W > bb.width - 2 * pad) { W = bb.width - 2 * pad; H = W / ratio; }
+    const cx = bb.left + bb.width / 2;
+    const shift = cx - (ib.left + ib.width / 2), extra = (W - ib.width) / 2;
+    const ease = reduceMotion ? "none" : `translate ${MQ_DUR}ms ${MQ_EASE}`;
+    const moved = [];
+    const move = (el, dx) => { el.style.transition = ease; el.style.translate = `${dx}px 0`; moved.push(el); };
+    // Same row: the tile's slot to the centre, neighbours outward.
+    const items = $$(".mq-item", row), k = items.indexOf(item);
+    items.forEach((it, n) => move(it, n < k ? shift - extra : n > k ? shift + extra : shift));
+    // Other rows: split at the centre and clear the enlarged tile.
+    const L = cx - W / 2, R = cx + W / 2;
+    rows.forEach((o) => {
+      if (o === row) return;
+      const its = $$(".mq-item", o).map((el) => ({ el, b: el.getBoundingClientRect() }));
+      const left = its.filter((x) => x.b.left + x.b.width / 2 < cx), right = its.filter((x) => x.b.left + x.b.width / 2 >= cx);
+      if (left.length) { const dl = L - gap - Math.max(...left.map((x) => x.b.right)); left.forEach((x) => move(x.el, dl)); }
+      if (right.length) { const dr = R + gap - Math.min(...right.map((x) => x.b.left)); right.forEach((x) => move(x.el, dr)); }
+    });
+    // The tile itself grows around its slot's centre, from the row's top (row 1) or bottom (row 2).
+    const topTarget = bb.top - ib.top + (bb.height - H) / 2;
+    Object.assign(tile.style, { transition: "none", inset: "auto", left: "50%", translate: "-50% 0", top: "0px", width: ib.width + "px", height: ib.height + "px" });
+    item.classList.add("is-big");
+    row.classList.add("has-big");
+    box.classList.add("has-open");
+    const name = tile.getAttribute("aria-label");
+    tile.insertAdjacentHTML("beforeend", `<span class="mq-label"><a href="${esc(tile.getAttribute("href"))}">${esc(name)} ${ICON.chev}</a></span>`);
+    mq.open = { item, tile, row, moved };
     // A demo tile turns into the real app demo once enlarged: tap through it in place.
     const proj = byId[(tile.getAttribute("href").split("#")[1] || "")];
     if (item.dataset.demo && proj && proj.demo) {
-      const comp = createDemo(proj);
-      const slot = $(".mq-demo", big), still = $(".mq-phone", big);
+      const comp = createDemo(proj), slot = $(".mq-demo", tile), still = $(".mq-phone", tile);
       comp.phone.classList.add("mq-phone");
       slot.replaceChild(comp.phone, still);
-      big.classList.add("is-demo");
-      mq.openDemo = comp;
-      const fit = () => fitPhone(comp.phone, slot, 420, true);
+      mq.open.demo = { comp, still, slot };
+      const fit = () => fitPhone(comp.phone, slot, 440, true);
       fit();
-      if ("ResizeObserver" in window) { mq.demoRO = new ResizeObserver(fit); mq.demoRO.observe(slot); }
+      if ("ResizeObserver" in window) { mq.open.demo.ro = new ResizeObserver(fit); mq.open.demo.ro.observe(slot); }
     }
-    tile.style.visibility = "hidden";
-    mq.open = { big, tile, from };
-    box.classList.add("has-open");
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      big.style.transition = reduceMotion ? "none" : ["left", "top", "width", "height"].map((k) => `${k} ${MQ_DUR}ms ${MQ_EASE}`).join(",");
-      setBox(big, to);
-      big.classList.add("is-open");
-    }));
-    big.addEventListener("click", (e) => { if (e.target.closest(".mq-label a") || e.target.closest(".phone-screen")) return; e.preventDefault(); collapseTile(); });
-    const link = $(".mq-label a", big); if (link) setTimeout(() => link.focus({ preventScroll: true }), reduceMotion ? 0 : MQ_DUR);
+    tile.getBoundingClientRect(); // commit the start size before animating
+    const t = reduceMotion ? "none" : ["width", "height", "top"].map((p) => `${p} ${MQ_DUR}ms ${MQ_EASE}`).join(",");
+    Object.assign(tile.style, { transition: t, top: topTarget + "px", width: W + "px", height: H + "px" });
+    const link = $(".mq-label a", tile);
+    if (link) setTimeout(() => { if (mq.open && mq.open.tile === tile) link.focus({ preventScroll: true }); }, reduceMotion ? 0 : MQ_DUR);
   }
   function collapseTile(instant) {
     const o = mq.open;
     if (!o) return;
     mq.open = null;
-    const box = $("#mq");
-    box.classList.remove("has-open");
-    o.big.classList.remove("is-open");
-    if (mq.openDemo) { dropDemo(mq.openDemo); mq.openDemo = null; }
-    if (mq.demoRO) { mq.demoRO.disconnect(); mq.demoRO = null; }
-    const done = () => { o.big.remove(); o.tile.style.visibility = ""; };
-    if (instant || reduceMotion) { done(); return; }
-    setBox(o.big, tileBox(o.tile, box));
-    setTimeout(done, MQ_DUR);
+    $("#mq").classList.remove("has-open");
+    const lab = $(".mq-label", o.tile); if (lab) lab.remove();
+    if (o.demo) { dropDemo(o.demo.comp); if (o.demo.ro) o.demo.ro.disconnect(); o.demo.slot.replaceChild(o.demo.still, o.demo.comp.phone); }
+    const finish = () => {
+      o.moved.forEach((el) => { el.style.transition = ""; el.style.translate = ""; });
+      ["transition", "inset", "left", "translate", "top", "width", "height"].forEach((p) => o.tile.style.removeProperty(p));
+      o.item.classList.remove("is-big");
+      o.row.classList.remove("has-big");
+      mq.closing = false;
+    };
+    if (instant || reduceMotion) { finish(); return; }
+    mq.closing = true;
+    o.moved.forEach((el) => { el.style.translate = "0px 0"; });
+    const ib = o.item.getBoundingClientRect();
+    Object.assign(o.tile.style, { top: "0px", width: ib.width + "px", height: ib.height + "px" });
+    setTimeout(finish, MQ_DUR);
   }
-  document.addEventListener("click", (e) => { if (mq.open && !e.target.closest(".mq-big") && !e.target.closest(".mq-item")) collapseTile(); });
+  document.addEventListener("click", (e) => { if (mq.open && !e.target.closest(".mq")) collapseTile(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && mq.open) { const t = mq.open.tile; collapseTile(); t.focus({ preventScroll: true }); } });
 
   function renderHero() {
@@ -884,7 +899,6 @@
     $("#about").innerHTML = `
       <img class="about-photo" src="${esc(pr.photo)}" alt="${T(pr.name)}" width="1000" height="1221" loading="lazy">
       <div class="about-body">
-        <p class="eyebrow" style="margin:0 0 18px">${esc(N("about"))}</p>
         ${paras[0] ? `<p class="statement">${esc(paras[0])}</p>` : ""}
         ${paras.slice(1).map((s) => `<p>${esc(s)}</p>`).join("")}
       </div>`;
