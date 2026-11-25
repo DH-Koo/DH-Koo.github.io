@@ -815,6 +815,14 @@
     const grow = () => { ta.style.height = "auto"; ta.style.height = ta.scrollHeight + "px"; };
     ta.addEventListener("input", grow);
     form.addEventListener("submit", sendContact);
+    // A field marked red goes back to normal as soon as the visitor edits it.
+    form.addEventListener("input", (e) => {
+      const el = e.target;
+      if (el.getAttribute && el.getAttribute("aria-invalid") === "true") {
+        el.setAttribute("aria-invalid", "false");
+        $(".cf-status", form).textContent = "";
+      }
+    });
   }
   async function sendContact(e) {
     e.preventDefault();
