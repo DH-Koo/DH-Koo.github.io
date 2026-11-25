@@ -275,6 +275,7 @@ html:lang(en) .live { text-transform: uppercase; }
 .mq-phone { --bz: 6px; --rad: 22px; width: auto; height: 88%; }
 .mq-phone .phone-screen { height: 100%; width: auto; aspect-ratio: 390 / 844; }
 .mq-phone .phone-screen img { width: 100%; height: 100%; object-fit: cover; }
+.mq-item.is-big .mq-demo { padding: 28px 0; }
 .mq-item.is-big .mq-phone.phone { height: auto; --bz: 8px; --rad: 30px; }
 .mq-item.is-big .mq-phone.phone .phone-screen { height: auto; width: 100%; }
 html:lang(en) .mq-label { position: absolute; left: 16px; bottom: 16px; z-index: 2; }
