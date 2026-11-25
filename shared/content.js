@@ -37,8 +37,8 @@ window.PORTFOLIO = {
       ]
     },
     now: {
-      en: "Open to internships at product-driven startups. Based in Korea.",
-      ko: "프로덕트 중심 스타트업 인턴 기회를 찾고 있습니다."
+      en: "Feel free to\nTalk with me!",
+      ko: "편하게\n연락 주세요!"
     },
     location: { en: "Ulsan / Seoul, Korea", ko: "울산 / 서울" },
     timezone: "Asia/Seoul",

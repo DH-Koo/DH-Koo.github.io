@@ -312,7 +312,7 @@ a.r-title:hover { text-decoration: underline; text-underline-offset: 4px; text-d
 
 /* Contact */
 .contact { padding: clamp(110px, 13vw, 200px) var(--pad) clamp(90px, 10vw, 150px); text-align: center; scroll-margin-top: 24px; }
-.contact-big { margin: 0 auto; font-size: clamp(36px, 4.6vw, 72px); line-height: 1.08; letter-spacing: -0.035em; max-width: 16em; }
+.contact-big { white-space: pre-line; margin: 0 auto; font-size: clamp(36px, 4.6vw, 72px); line-height: 1.08; letter-spacing: -0.035em; max-width: 16em; }
 html:lang(ko) .contact-big { line-height: 1.25; letter-spacing: -0.025em; }
 .cform-box { margin: clamp(40px, 4.4vw, 64px) auto 0; max-width: 720px; background: var(--tile); border-radius: clamp(20px, 2.8vw, 40px); padding: clamp(24px, 2.8vw, 40px); text-align: left; }
 .cform { display: flex; flex-direction: column; }
