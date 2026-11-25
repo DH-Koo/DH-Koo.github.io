@@ -310,6 +310,8 @@ body[data-page="about"] #records > .hsec:first-child { padding-top: clamp(56px, 
 .about { max-width: 1160px; margin-inline: auto; box-sizing: content-box; display: grid; grid-template-columns: minmax(220px, 320px) minmax(0, 1fr); gap: clamp(32px, 5.4vw, 80px); align-items: start; scroll-margin-top: 24px; }
 .about-photo { width: 100%; height: auto; aspect-ratio: 1000 / 1221; border-radius: var(--r-md); background: var(--tile); }
 .statement { margin: -6px 0 0; font-size: var(--fs-big); line-height: 1.25; letter-spacing: -0.025em; max-width: none; text-wrap: pretty; }
+/* First line's cap height starts level with the photo's top edge (cancels line-height and ascender space) */
+.about-body > p.statement { margin-top: -0.24em; }
 .about-body p { margin: 24px 0 0; max-width: none; color: var(--ink-2); text-wrap: pretty; }
 
 /* Hairline rows: experience, education, award, talks, skills */
