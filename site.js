@@ -854,7 +854,8 @@
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.success === false) throw new Error(data.message || res.status);
       try { localStorage.setItem("cf-sent", JSON.stringify(sent.concat(Date.now()))); } catch (err) {}
-      form.reset(); grow();
+      form.reset();
+      f("message").style.height = "auto";
       status.textContent = L("cfSent");
     } catch (err) {
       status.innerHTML = `${esc(L("cfFailed"))} <a href="mailto:${esc(pr.email)}">${esc(pr.email)}</a>`;
