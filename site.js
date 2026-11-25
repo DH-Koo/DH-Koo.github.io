@@ -709,6 +709,9 @@
     r.track.innerHTML = r.base.repeat(copies);
     const items = r.track.children, n = items.length / copies;
     r.setW = items[n] ? items[n].offsetLeft - items[0].offsetLeft : one;
+    // Guard: a set must be wider than the row plus its widest tile, or a picture would show twice.
+    const widest = Math.max(...Array.from(items).slice(0, n).map((it) => it.offsetWidth));
+    if (r.setW - widest < r.row.clientWidth) console.warn("marquee row too short for this screen", r.setW, widest, r.row.clientWidth);
     if (r.x === 0) r.x = r.dir > 0 ? r.setW * 0.5 : 0;
     place(r);
   }
@@ -724,6 +727,7 @@
       mq.rows.forEach((r) => {
         if (r.drag) return;
         // A released drag coasts and settles back into the drift.
+        if (mq.open) return; // rows hold still while a tile is enlarged
         r.vel *= Math.pow(0.04, dt);
         r.x += (-r.dir * MQ_SPEED + r.vel) * dt;
         place(r);
@@ -764,15 +768,77 @@
     row.addEventListener("pointerup", end);
     row.addEventListener("pointercancel", end);
     row.addEventListener("dragstart", (e) => e.preventDefault());
-    row.addEventListener("click", (e) => { if (r.dragEnd && performance.now() - r.dragEnd < 300) { e.preventDefault(); e.stopPropagation(); } }, true);
+    row.addEventListener("click", (e) => {
+      if (r.dragEnd && performance.now() - r.dragEnd < 300) { e.preventDefault(); e.stopPropagation(); return; }
+      const item = e.target.closest(".mq-item");
+      if (!item || e.metaKey || e.ctrlKey || e.shiftKey) return; // modified clicks still open the project
+      e.preventDefault();
+      expandTile(item);
+    }, true);
   }
+
+  /* Click a tile: it grows in place to the height of both rows, centred, and the rows stop.
+     Its name appears as a link to the project. Click it again, click outside or press Esc to shrink it. */
+  const MQ_EASE = "cubic-bezier(.32,.72,0,1)", MQ_DUR = 560;
+  function tileBox(el, box) {
+    const a = el.getBoundingClientRect(), b = box.getBoundingClientRect();
+    return { left: a.left - b.left, top: a.top - b.top, width: a.width, height: a.height };
+  }
+  function setBox(el, r) { Object.assign(el.style, { left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px" }); }
+  function expandTile(item) {
+    if (mq.open) { collapseTile(); return; }
+    const box = $("#mq"), tile = $(".mq-tile", item);
+    if (!box || !tile) return;
+    const from = tileBox(tile, box);
+    const ratio = parseFloat(getComputedStyle(item).getPropertyValue("--r")) || 1;
+    const bw = box.clientWidth, bh = box.clientHeight;
+    let h = bh, w = h * ratio;
+    const maxW = bw - 2 * Math.max(16, parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--pad")) || 32);
+    if (w > maxW) { w = maxW; h = Math.min(bh, w / ratio); }
+    const to = { left: (bw - w) / 2, top: (bh - h) / 2, width: w, height: h };
+    const big = tile.cloneNode(true);
+    big.classList.add("mq-big");
+    big.removeAttribute("title");
+    big.setAttribute("role", "button");
+    big.setAttribute("aria-label", `${L("close")}: ${tile.getAttribute("aria-label")}`);
+    const href = tile.getAttribute("href"), name = tile.getAttribute("aria-label");
+    big.insertAdjacentHTML("beforeend", `<span class="mq-label"><a href="${esc(href)}">${esc(name)} ${ICON.chev}</a></span>`);
+    setBox(big, from);
+    big.style.transition = "none";
+    box.appendChild(big);
+    const v = $("video", big); if (v) { v.muted = true; v.play().catch(() => {}); }
+    tile.style.visibility = "hidden";
+    mq.open = { big, tile, from };
+    box.classList.add("has-open");
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      big.style.transition = reduceMotion ? "none" : ["left", "top", "width", "height"].map((k) => `${k} ${MQ_DUR}ms ${MQ_EASE}`).join(",");
+      setBox(big, to);
+      big.classList.add("is-open");
+    }));
+    big.addEventListener("click", (e) => { if (e.target.closest(".mq-label a")) return; e.preventDefault(); collapseTile(); });
+    const link = $(".mq-label a", big); if (link) setTimeout(() => link.focus({ preventScroll: true }), reduceMotion ? 0 : MQ_DUR);
+  }
+  function collapseTile(instant) {
+    const o = mq.open;
+    if (!o) return;
+    mq.open = null;
+    const box = $("#mq");
+    box.classList.remove("has-open");
+    o.big.classList.remove("is-open");
+    const done = () => { o.big.remove(); o.tile.style.visibility = ""; };
+    if (instant || reduceMotion) { done(); return; }
+    setBox(o.big, tileBox(o.tile, box));
+    setTimeout(done, MQ_DUR);
+  }
+  document.addEventListener("click", (e) => { if (mq.open && !e.target.closest(".mq-big") && !e.target.closest(".mq-item")) collapseTile(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && mq.open) { const t = mq.open.tile; collapseTile(); t.focus({ preventScroll: true }); } });
 
   function renderHero() {
     $("#hero-text").innerHTML = `
       <div>
         <h1 class="thesis" id="hero-h">${T(P.profile.headline)}</h1>
       </div>`;
-    $("#work-head").innerHTML = `<h2 class="h2" id="work-h">${esc(N("work"))}</h2>
+    $("#work-head").innerHTML = `<h2 class="mq-h" id="work-h">${esc(L("selectedWork"))}</h2>
       <a class="more-link" href="work.html"><span>${esc(L("seeAll"))}</span>${ICON.chev}</a>`;
     if (!home.built) buildMarquee();
     else $$(".mq-tile").forEach((a) => { const t = a.getAttribute("href").split("#")[1]; const p = byId[t]; if (p) { a.setAttribute("aria-label", shortOf(p)); a.title = shortOf(p); } });
@@ -1036,7 +1102,7 @@
   window.addEventListener("hashchange", () => { if (PAGE === "work") routeWork(); });
   window.addEventListener("resize", () => {
     layoutTopNav();
-    if (PAGE === "home") { clearTimeout(mq.rt); mq.rt = setTimeout(() => mq.rows.forEach(fillRow), 150); }
+    if (PAGE === "home") { collapseTile(true); clearTimeout(mq.rt); mq.rt = setTimeout(() => mq.rows.forEach(fillRow), 150); }
     else if (PAGE === "work") fitShortTitle();
   });
 
