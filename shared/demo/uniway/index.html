@@ -1,0 +1,1425 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Uniway Demo</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<!--
+  Uniway 인터랙티브 데모 (HTML/CSS/JS 재현본)
+  - 원본: Flutter 앱 /Users/daehee/Desktop/uniway (2025-08-26 스토어 버전 기준 화면·색·문구·에셋)
+  - 백엔드 없음. 모든 데이터는 아래 INITIAL 목업.
+  - 기준 해상도 390x844 (논리 px). 호스트 iframe 크기에 맞춰 scale.
+  - URL: ?screen=<id>  ?autoplay=1  ?static=1
+  - postMessage: in  {type:"demo:goto",screen}, {type:"demo:autoplay",on}
+                 out {type:"demo:screen",app:"uniway",screen,detail}
+-->
+<style>
+:root{
+  --blue:#73BEFF; --b50:#E3F2FD; --chip:#E3F2FD; --chipT:#1976D2; --mblue:#2196F3;
+  --g50:#FAFAFA; --g100:#F5F5F5; --g200:#EEEEEE; --g300:#E0E0E0; --g400:#BDBDBD; --g500:#9E9E9E; --g600:#757575; --g700:#616161; --g800:#424242;
+  --red:#F44336; --red6:#E53935; --b87:rgba(0,0,0,.87); --b54:rgba(0,0,0,.54);
+  --font:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:#fff}
+body{font-family:var(--font)}
+#app{position:absolute;left:0;top:0;width:390px;height:844px;overflow:hidden;transform-origin:0 0;background:#fff;
+  font-family:var(--font);font-size:14px;font-weight:500;color:#000;line-height:1.43;word-break:keep-all;overflow-wrap:anywhere;
+  -webkit-font-smoothing:antialiased;user-select:none;-webkit-user-select:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input,textarea{font:inherit;color:#000;border:0;outline:0;background:transparent;user-select:text;-webkit-user-select:text}
+textarea{resize:none}
+img{display:block;-webkit-user-drag:none}
+[data-act]{cursor:pointer}
+.w7{font-weight:700}
+.ell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row{display:flex;align-items:center}
+.col{display:flex;flex-direction:column}
+.sp{flex:1 1 auto;min-width:0}
+.pre{white-space:pre-line}
+.nos{scrollbar-width:none}.nos::-webkit-scrollbar{display:none}
+
+/* stage / tabs / screens */
+#stage{position:absolute;left:0;top:0;width:390px;height:754px;overflow:hidden}
+.tab{position:absolute;inset:0;display:none}
+.tab.on{display:block}
+.screen{position:absolute;inset:0;overflow:hidden;background:#fff}
+.appbar{position:absolute;left:0;top:0;right:0;height:103px;padding-top:47px;z-index:3}
+.tb{position:relative;height:56px}
+.lead{position:absolute;left:4px;top:4px}
+.acts{position:absolute;right:0;top:4px;display:flex}
+.ttl{position:absolute;left:72px;right:72px;top:0;height:56px;display:flex;align-items:center;justify-content:center}
+.ib{width:48px;height:48px;display:grid;place-items:center;border-radius:50%}
+.ib:active{background:rgba(0,0,0,.06)}
+.scroll{position:absolute;left:0;right:0;top:103px;bottom:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;overscroll-behavior:contain}
+.scroll::-webkit-scrollbar{display:none}
+.fab{position:absolute;right:16px;bottom:16px;width:56px;height:56px;border-radius:16px;background:#fff;display:grid;place-items:center;z-index:4;
+  box-shadow:0 3px 6px rgba(0,0,0,.14),0 6px 16px rgba(0,0,0,.10)}
+.fab svg{transition:transform .25s}
+.fab.open svg{transform:rotate(45deg)}
+
+/* status bar & nav */
+#status{position:absolute;left:0;top:0;width:390px;height:47px;z-index:60;pointer-events:none;color:#000}
+#status .t{position:absolute;left:0;width:108px;top:14px;text-align:center;font:600 17px/20px -apple-system,"SF Pro Text",var(--font);letter-spacing:-.3px}
+#status .ic{position:absolute;right:26px;top:18px;display:flex;gap:6px;align-items:center}
+#nav{position:absolute;left:0;bottom:0;width:390px;height:90px;background:#fff;z-index:20;box-shadow:0 -1px 4px rgba(0,0,0,.05)}
+#nav .it{position:absolute;top:0;width:130px;height:56px;display:grid;place-items:center}
+#nav .hi{position:absolute;left:128px;bottom:8px;width:134px;height:5px;border-radius:3px;background:#000}
+
+/* overlays */
+#sov{position:absolute;left:0;top:0;width:390px;height:754px;z-index:30;pointer-events:none}
+#rov{position:absolute;inset:0;z-index:50;pointer-events:none}
+.barrier{position:absolute;inset:0;background:rgba(0,0,0,.54);pointer-events:auto}
+.dlg{position:absolute;left:40px;right:40px;top:50%;transform:translateY(-50%);background:#fff;border-radius:20px;padding:20px;pointer-events:auto;max-height:780px;
+  box-shadow:0 6px 20px rgba(0,0,0,.18)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:20px 20px 0 0;pointer-events:auto;max-height:640px;overflow-y:auto;scrollbar-width:none}
+.sheet::-webkit-scrollbar{display:none}
+.handle{width:40px;height:4px;border-radius:2px;background:var(--g300);margin:12px auto 20px}
+.drawer{position:absolute;right:0;top:0;bottom:0;width:331.5px;background:#fff;pointer-events:auto;display:flex;flex-direction:column}
+#snack{position:absolute;left:16px;right:16px;bottom:106px;z-index:40;pointer-events:none}
+.snk{border-radius:12px;padding:14px 16px;color:#fff;font-size:16px;font-weight:500;box-shadow:0 3px 8px rgba(0,0,0,.2);line-height:1.35}
+#fx{position:absolute;inset:0;z-index:70;pointer-events:none;overflow:hidden}
+.tapfx{position:absolute;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;background:rgba(25,25,25,.34);border:2.5px solid rgba(255,255,255,.85);
+  box-shadow:0 0 0 1px rgba(0,0,0,.08);animation:tap .6s ease-out forwards}
+@keyframes tap{0%{transform:scale(.35);opacity:0}25%{opacity:1}100%{transform:scale(1.25);opacity:0}}
+
+/* shared components */
+.chip{display:inline-block;padding:4px 8px;border-radius:10px;background:var(--chip);color:var(--chipT);font-size:12px;font-weight:500}
+.card{background:#fff;border-radius:10px;padding:16px;box-shadow:0 2px 8px rgba(158,158,158,.08)}
+.av{position:absolute;top:0;border-radius:50%;overflow:hidden}
+.av.e{background:var(--g100);border:.5px solid var(--g200);display:grid;place-items:center}
+.av img{width:100%;height:100%;object-fit:cover}
+.pill{display:inline-flex;align-items:center;flex:0 0 auto;margin-right:8px;padding:6px 12px;border-radius:25px;border:1px solid var(--g300);background:#fff;font-size:14px;font-weight:500;white-space:nowrap}
+.pill.on{background:#000;border-color:#000;color:#fff}
+.udj{background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 4px 1px rgba(158,158,158,.1)}
+.grey6{color:var(--g600)}
+.inp{border:1px solid var(--g300);border-radius:8px;padding:16px 12px;font-size:16px;line-height:1.5;width:100%;display:block;background:#fff}
+.inp:focus{border-color:var(--blue)}
+.inp::placeholder,textarea::placeholder,input::placeholder{color:var(--g400)}
+.btn{display:block;width:100%;background:var(--blue);color:#fff;border-radius:12px;padding:16px 0;font-size:16px;font-weight:500;text-align:center}
+.tbtn{display:block;width:100%;padding:16px 0;text-align:center;font-size:16px;font-weight:700;color:var(--blue);border-radius:20px}
+.tbtn:disabled{color:var(--g400);cursor:default}
+.divider{height:16px;display:flex;align-items:center}.divider:after{content:"";display:block;height:1px;width:100%;background:var(--dv,#CAC4D0)}
+.lbl{font-size:12px;color:var(--g600);font-weight:500}
+.tag{display:inline-block;padding:8px 16px;border-radius:20px;background:var(--g100);border:1px solid var(--g100);color:var(--b87);font-size:14px;font-weight:500}
+.tag.on{background:#000;border-color:#000;color:#fff;font-weight:700}
+.opt{display:inline-block;padding:8px 16px;border-radius:20px;background:#fff;border:1px solid var(--g300);font-size:14px;font-weight:500}
+.opt.on{background:rgba(115,190,255,.2);border:2px solid var(--blue);color:var(--blue);padding:7px 15px;font-weight:700}
+.ttlbtn{padding:8px 16px;font-size:16px;font-weight:700}
+.spin{width:28px;height:28px;border-radius:50%;border:3px solid #E0E0E0;border-top-color:#9E9E9E;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes tapr{0%{opacity:0}20%{opacity:1}100%{opacity:0}}
+@media (prefers-reduced-motion: reduce){ .tapfx{animation:tapr .6s linear forwards} .fab svg{transition:none} }
+</style>
+</head>
+<body>
+<div id="app" aria-label="Uniway 앱 데모">
+  <div id="stage"><div class="tab on" id="tab0"></div><div class="tab" id="tab1"></div><div class="tab" id="tab2"></div></div>
+  <div id="sov"></div>
+  <div id="snack"></div>
+  <nav id="nav"></nav>
+  <div id="status"><div class="t">9:41</div><div class="ic">
+    <svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="7.5" width="3.2" height="4.5" rx="1"/><rect x="4.8" y="5.3" width="3.2" height="6.7" rx="1"/><rect x="9.6" y="2.8" width="3.2" height="9.2" rx="1"/><rect x="14.4" y="0" width="3.2" height="12" rx="1"/></svg>
+    <svg width="16" height="12" viewBox="0 0 16 12"><path d="M8 2.3c2.3 0 4.4.9 6 2.3l1.2-1.2A10.2 10.2 0 0 0 8 .6 10.2 10.2 0 0 0 .8 3.4L2 4.6a8.6 8.6 0 0 1 6-2.3zm0 3.4c1.4 0 2.6.5 3.6 1.3l1.2-1.2A7 7 0 0 0 8 4a7 7 0 0 0-4.8 1.8L4.4 7c1-.8 2.2-1.3 3.6-1.3zm0 3.3c-.6 0-1.2.3-1.6.7L8 11.4l1.6-1.7c-.4-.4-1-.7-1.6-.7z"/></svg>
+    <svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.8" fill="none" stroke="#000" stroke-opacity=".35"/><rect x="2" y="2" width="20" height="9" rx="2.4"/><path d="M25 4.2v4.6c.8-.3 1.4-1.2 1.4-2.3S25.8 4.5 25 4.2z" fill-opacity=".4"/></svg>
+  </div></div>
+  <div id="rov"></div>
+  <div id="fx"></div>
+</div>
+<script>
+(function(){
+'use strict';
+/* =========================================================
+   0. 설정 / 유틸
+   ========================================================= */
+const QS = new URLSearchParams(location.search);
+const REDUCED = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const STATIC = QS.get('static') === '1';
+const ANIM = !(STATIC || REDUCED);
+const A = 'assets/';
+const $ = (s, r) => (r || document).querySelector(s);
+const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clone = o => JSON.parse(JSON.stringify(o));
+const fmt = n => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+const app = $('#app');
+
+/* Material Icons (24px viewBox) */
+const MI = {
+  back_ios: 'M17.77 3.77 16 2 6 12l10 10 1.77-1.77L9.54 12z',
+  back: 'M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z',
+  search: 'M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z',
+  add: 'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z',
+  close: 'M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z',
+  pin: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z',
+  arrow_r: 'M16.01 11H4v2h12.01v3L20 12l-3.99-4z',
+  down: 'M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z',
+  thumb_o: 'M9 21h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.58 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2zM9 9l4.34-4.34L12 10h9v2l-3 7H9V9zM1 9h4v12H1z',
+  thumb: 'M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z',
+  bubble_o: 'M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z',
+  article: 'M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM14 17H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z',
+  refresh: 'M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z',
+  more_v: 'M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z',
+  more_h: 'M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z',
+  send: 'M2.01 21 23 12 2.01 3 2 10l15 2-15 2z',
+  lock: 'M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6-9h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM8.9 6c0-1.71 1.39-3.1 3.1-3.1s3.1 1.39 3.1 3.1v2H8.9V6zM18 20H6V10h12v10z',
+  school: 'M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3 1 9l11 6 9-4.91V17h2V9L12 3z',
+  bag: 'M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2zm6 16H6V8h2v2c0 .55.45 1 1 1s1-.45 1-1V8h4v2c0 .55.45 1 1 1s1-.45 1-1V8h2v12z',
+  bagf: 'M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-8 4c0 .55-.45 1-1 1s-1-.45-1-1V8h2v2zm2-6c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2zm4 6c0 .55-.45 1-1 1s-1-.45-1-1V8h2v2z',
+  homef: 'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z',
+  car: 'M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z',
+  people: 'M16.5 13c-1.2 0-3.07.34-4.5 1-1.43-.67-3.3-1-4.5-1C5.33 13 1 14.08 1 16.25V19h22v-2.75c0-2.17-4.33-3.25-6.5-3.25zm-4 4.5h-10v-1.25c0-.54 2.56-1.75 5-1.75s5 1.21 5 1.75v1.25zm9 0H14v-1.25c0-.46-.2-.86-.52-1.22.88-.3 1.96-.53 3.02-.53 2.44 0 5 1.21 5 1.75v1.25zM7.5 12c1.93 0 3.5-1.57 3.5-3.5S9.43 5 7.5 5 4 6.57 4 8.5 5.57 12 7.5 12zm0-5.5c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm9 5.5c1.93 0 3.5-1.57 3.5-3.5S18.43 5 16.5 5 13 6.57 13 8.5s1.57 3.5 3.5 3.5zm0-5.5c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2z',
+  mood: 'M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z',
+  group: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z',
+  soccer: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 3.3 1.35-.95c1.82.56 3.37 1.76 4.38 3.34l-.39 1.34-1.35.46L13 6.7V5.3zm-3.35-.95L11 5.3v1.4L7.01 9.49l-1.35-.46-.39-1.34c1.01-1.57 2.56-2.77 4.38-3.34zM7.08 17.11l-1.14.1C4.73 15.81 4 13.99 4 12c0-.12.01-.23.02-.35l1-.73 1.38.48 1.46 4.34-.78 1.37zm7.42 2.48c-.79.26-1.63.41-2.5.41s-1.71-.15-2.5-.41l-.69-1.49.64-1.1h5.11l.64 1.11-.7 1.48zM14.27 15H9.73l-1.35-4.02L12 8.44l3.63 2.54L14.27 15zm3.79 2.21-1.14-.1-.79-1.37 1.46-4.34 1.39-.47 1 .73c.01.11.02.22.02.34 0 1.99-.73 3.81-1.94 5.21z',
+  exit: 'M10.09 15.59 11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z',
+  bulb: 'M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z',
+  gear: 'M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z',
+  hourglass: 'M6 2v6h.01L6 8.01 10 12l-4 4 .01.01H6V22h12v-5.99h-.01L18 16l-4-4 4-3.99-.01-.01H18V2H6zm10 14.5V20H8v-3.5l4-4 4 4zm-4-5-4-4V4h8v3.5l-4 4z',
+  science: 'M19.8 18.4 14 10.67V6.5l1.35-1.69c.26-.33.03-.81-.39-.81H9.04c-.42 0-.65.48-.39.81L10 6.5v4.17L4.2 18.4c-.49.66-.02 1.6.8 1.6h14c.82 0 1.29-.94.8-1.6z',
+  work: 'M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-6 0h-4V4h4v2z',
+  qa: 'M21 6h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1zm-4 6V3c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v14l4-4h10c.55 0 1-.45 1-1z',
+  noimg: 'M21.9 21.9 2.1 2.1.69 3.51 3 5.83V19c0 1.1.9 2 2 2h13.17l2.31 2.31 1.42-1.41zM5 19V7.83l7.07 7.07-.82 1.03L9 13l-3 4h8.17l2 2H5zM7.83 5l-2-2H19c1.1 0 2 .9 2 2v13.17l-2-2V5H7.83z'
+};
+/* Material Symbols (viewBox 0 -960 960 960) */
+const SY = {
+  home: 'M240-200h120v-240h240v240h120v-360L480-740 240-560v360Zm-80 80v-480l320-240 320 240v480H520v-240h-80v240H160Zm320-350Z',
+  home_f: 'M160-120v-480l320-240 320 240v480H560v-280H400v280H160Z',
+  fav: 'm480-120-58-52q-101-91-167-157T150-447.5Q111-500 95.5-544T80-634q0-94 63-157t157-63q52 0 99 22t81 62q34-40 81-62t99-22q94 0 157 63t63 157q0 46-15.5 90T810-447.5Q771-395 705-329T538-172l-58 52Zm0-108q96-86 158-147.5t98-107q36-45.5 50-81t14-70.5q0-60-40-100t-100-40q-47 0-87 26.5T518-680h-76q-15-41-55-67.5T300-774q-60 0-100 40t-40 100q0 35 14 70.5t50 81q36 45.5 98 107T480-228Zm0-273Z',
+  fav_f: 'm480-120-58-52q-101-91-167-157T150-447.5Q111-500 95.5-544T80-634q0-94 63-157t157-63q52 0 99 22t81 62q34-40 81-62t99-22q94 0 157 63t63 157q0 46-15.5 90T810-447.5Q771-395 705-329T538-172l-58 52Z',
+  chat: 'M80-80v-720q0-33 23.5-56.5T160-880h640q33 0 56.5 23.5T880-800v480q0 33-23.5 56.5T800-240H240L80-80Zm126-240h594v-480H160v525l46-45Zm-46 0v-480 480Z',
+  chat_f: 'M80-80v-720q0-33 23.5-56.5T160-880h640q33 0 56.5 23.5T880-800v480q0 33-23.5 56.5T800-240H240L80-80Z',
+  person: 'M480-480q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47ZM160-160v-112q0-34 17.5-62.5T224-378q62-31 126-46.5T480-440q66 0 130 15.5T736-378q29 15 46.5 43.5T800-272v112H160Zm80-80h480v-32q0-11-5.5-20T700-306q-54-27-109-40.5T480-360q-56 0-111 13.5T260-306q-9 5-14.5 14t-5.5 20v32Zm240-320q33 0 56.5-23.5T560-640q0-33-23.5-56.5T480-720q-33 0-56.5 23.5T400-640q0 33 23.5 56.5T480-560Zm0-80Zm0 400Z',
+  add: 'M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z'
+};
+const ic = (n, s = 24, c = 'currentColor', st = '') => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="${c}" style="display:block;flex:0 0 auto;${st}" aria-hidden="true"><path d="${MI[n]}"/></svg>`;
+const sy = (n, s = 24, c = 'currentColor') => `<svg width="${s}" height="${s}" viewBox="0 -960 960 960" fill="${c}" style="display:block;flex:0 0 auto" aria-hidden="true"><path d="${SY[n]}"/></svg>`;
+
+/* Flutter LinearGradient 은 비-premultiplied 보간이라 rgba(115,190,255,.01)→grey100 사이가 푸르게 보인다. 같은 결과를 CSS 다중 stop으로 재현 */
+function flutterGrad(bg, c0, a0, c1, a1, n = 14){
+  const st = [];
+  for (let i = 0; i <= n; i++){
+    const t = i / n, a = a0 + (a1 - a0) * t;
+    const ch = k => Math.round(bg[k] * (1 - a) + (c0[k] + (c1[k] - c0[k]) * t) * a);
+    st.push(`rgb(${ch(0)},${ch(1)},${ch(2)}) ${(t * 100).toFixed(1)}%`);
+  }
+  return `linear-gradient(180deg,${st.join(',')})`;
+}
+const BLUE = [115,190,255], G100 = [245,245,245], WHITE = [255,255,255];
+const GRAD_G = flutterGrad(G100, BLUE, .01, G100, 1);   // 배너: blue@1% → grey100 (배경 grey100)
+const GRAD_W = flutterGrad(WHITE, BLUE, .01, WHITE, 1); // 배너: blue@1% → white (배경 white)
+const BAR_G = 'rgb(244,245,245)';  // AppBar: blue@1% over grey100
+const BAR_W = 'rgb(254,254,255)';  // AppBar: blue@1% over white
+
+/* =========================================================
+   1. 목업 데이터 (실존 인물 정보 없음 · 닉네임은 임의)
+   ========================================================= */
+const ME = '유니웨이';
+const TODAY = { y: 2025, m: 8, d: 14 }; // 2025-08-14 (목) 고정
+const DOW = ['일','월','화','수','목','금','토'];
+const dowOf = (m, d) => DOW[new Date(2025, m - 1, d).getDay()];
+const PARENT = { '즐기기':['술','밥','영화','산책','노래방','게임','악기'], '구해요':['스터디','홈메/룸메','분실물','배달','고민상담'],
+  '운동':['농구','축구','탁구','야구','러닝','헬스','수영','배드민턴','테니스'], '기타':['기타'] };
+const parentOf = sub => Object.keys(PARENT).find(k => PARENT[k].includes(sub)) || '기타';
+const LOCS = ['울산역','유니스트','구영리','천상리','대리','언양','울산대학교','무거동','성남동','삼산동','태화강역'];
+
+const INITIAL = {
+  connect: [
+    {id:'u1',ut:0,sub:'배달',title:'마라탕 드실 분',content:'마라탕 드실 분 계세요? 배달시켜 먹어요! 기숙사 앞에서 같이 받아요',cur:2,max:4,ago:'7분 전',views:2,author:'마라탕러버'},
+    {id:'u2',ut:0,sub:'탁구',title:'탁구 소모임 모집합니다🏓',content:'탁구 좋아하시는 분들 환영입니다! 매주 수요일 저녁 체육관에서 쳐요',cur:2,max:50,ago:'27분 전',views:4,author:'핑퐁핑퐁'},
+    {id:'u3',ut:0,sub:'스터디',title:'미적분학 스터디',content:'미적분학 너무 어려워요😭 스터디 같이 하실 분 구해요. 주 2회 도서관에서 해요',cur:2,max:8,ago:'28분 전',views:13,author:'수학싫어'},
+    {id:'u4',ut:0,sub:'농구',title:'저녁에 농구 한 판',content:'오늘 저녁 8시 체육관 농구 하실 분! 실력 상관없어요',cur:5,max:10,ago:'1시간 전',views:9,author:'덩크슛'},
+    {id:'u5',ut:0,sub:'게임',title:'보드게임 하실 분',content:'학생회관에서 보드게임 같이 해요. 초보 환영',cur:3,max:6,ago:'2시간 전',views:7,author:'주사위'},
+    {id:'u6',ut:0,sub:'홈메/룸메',title:'2학기 룸메 구해요',content:'2학기 기숙사 룸메 구합니다. 아침형 인간이면 좋겠어요',cur:1,max:2,ago:'3시간 전',views:15,author:'일찍자요'},
+    {id:'u7',ut:0,sub:'영화',title:'주말에 영화 보실 분',content:'토요일에 삼산동 가서 영화 보실 분 구해요',cur:2,max:4,ago:'5시간 전',views:6,author:'팝콘'},
+    {id:'g1',ut:1,sub:'밥',title:'맛집 탐방',content:'쉴 때 같이 맛집 탐방 하러 가요',cur:1,max:4,ago:'1분 전',views:0,author:'먹으러다님'},
+    {id:'g2',ut:1,sub:'고민상담',title:'연구 고민',content:'연구 관련해서 고민이 있는데 들어주실 분',cur:1,max:2,ago:'방금 전',views:0,author:'박사과정'},
+    {id:'g3',ut:1,sub:'러닝',title:'러닝크루 모집🏃',content:'같이 뛰실 분 구해요 초보자 환영!',cur:1,max:20,ago:'방금 전',views:0,author:'새벽러너'},
+    {id:'g4',ut:1,sub:'스터디',title:'논문 읽기 모임',content:'주 1회 관심 분야 논문 같이 읽어요',cur:3,max:6,ago:'2시간 전',views:8,author:'리뷰어2'},
+    {id:'g5',ut:1,sub:'헬스',title:'퇴근 후 헬스',content:'랩 끝나고 저녁 9시에 같이 운동해요',cur:2,max:4,ago:'4시간 전',views:5,author:'근손실방지'}
+  ],
+  popular: { 0:['u3','u2','u1'], 1:['g1','g2','g3'] },
+  carpool: [
+    {id:'c1',m:8,d:15,time:'17:00',from:'유니스트',to:'울산역',cur:1,max:4,title:'금요일 KTX 타러 가요',author:'기차타는곰'},
+    {id:'c2',m:8,d:16,time:'18:00',from:'울산대학교',to:'구영리',cur:1,max:4,title:'구영리까지 같이 가실 분',author:'구영리주민'},
+    {id:'c3',m:8,d:18,time:'09:00',from:'태화강역',to:'언양',cur:1,max:4,title:'월요일 아침 언양 가요',author:'아침형인간'},
+    {id:'c4',m:8,d:19,time:'15:30',from:'울산역',to:'유니스트',cur:2,max:4,title:'학교 복귀 택시 같이 타요',author:'복귀생'},
+    {id:'c5',m:8,d:20,time:'12:00',from:'유니스트',to:'삼산동',cur:1,max:3,title:'삼산동 점심 먹으러 가요',author:'점심원정대'}
+  ],
+  market: {
+    item: [
+      {id:'i1',title:'이사박스',loc:'유니스트',price:5000,ago:'7분 전',th:'box',desc:'이사하고 남은 박스 5개 일괄로 팔아요. 한 번만 사용해서 상태 좋아요.'},
+      {id:'i2',title:'냉장고 팔아요',loc:'울산역',price:50000,ago:'9분 전',th:'fridge',desc:'원룸용 미니 냉장고입니다. 1년 사용했고 소음 거의 없어요.'},
+      {id:'i3',title:'전공서적 팔아요',loc:'구영리',price:5000,ago:'11분 전',th:'book',desc:'1학년 공학 전공서적입니다. 필기 거의 없어요.'},
+      {id:'i4',title:'맥북 에어 M2 15',loc:'UNIST',price:1200000,ago:'14분 전',th:'laptop',desc:'배터리 사이클 80회, 박스 포함 풀구성입니다.'},
+      {id:'i5',title:'자전거 팝니다',loc:'유니스트',price:80000,ago:'1시간 전',th:'bike',desc:'캠퍼스 이동용 자전거입니다. 자물쇠 같이 드려요.'}
+    ],
+    tutor: [
+      {id:'t1',title:'고2 남학생 수학 과외 모집합니다',subject:'수학',pay:30000,days:2,hours:'2시간',loc:'무거동',ago:'2분 전',desc:'고2 남학생 수학(미적분) 과외 선생님 구합니다. 내신 대비 위주로 진행해요.'},
+      {id:'t2',title:'중3 영어 과외 구해요',subject:'영어',pay:25000,days:1,hours:'1시간 30분',loc:'구영리',ago:'1시간 전',desc:'중3 여학생 영어 문법 위주로 봐주실 분 구해요.'},
+      {id:'t3',title:'고1 물리 과외 선생님 구합니다',subject:'물리',pay:35000,days:2,hours:'2시간',loc:'천상리',ago:'3시간 전',desc:'고1 통합과학 중 물리 파트 위주로 수업 부탁드려요.'}
+    ],
+    room: [
+      {id:'r1',title:'구영리 원룸',loc:'구영리',dep:300,rent:35,ago:'방금 전',th:'room',desc:'구영리 버스정류장 도보 3분 원룸입니다. 9월부터 입주 가능해요.'},
+      {id:'r2',title:'천상리 투룸 양도',loc:'천상리',dep:500,rent:45,ago:'1시간 전',th:'room2',desc:'남은 계약 6개월 양도합니다. 풀옵션이에요.'},
+      {id:'r3',title:'무거동 원룸 단기',loc:'무거동',dep:100,rent:40,ago:'5시간 전',th:'room3',desc:'방학 동안 단기로 지내실 분 구해요.'}
+    ]
+  },
+  board: [
+    {id:'b1',content:'도서관에서 공부하다가 잠깐 눈 감았는데, 눈 떠보니 제 앞에 있던 커피가 사라졌습니다. 커피 도둑.. 혹시 보고 계신가요?',ago:'방금 전',likes:0,liked:false,views:0,
+      comments:[]},
+    {id:'b2',content:'이번에 휴학하게 된 2학년 입니다. 다들 휴학하시면 어떤 활동들 많이 하시나요? 여러 조언 해주시면 감사하겠습니다!',ago:'1분 전',likes:0,liked:false,views:0,
+      comments:[]},
+    {id:'b3',content:'오랫동안 좋아했던 친구가 있는데 어떻게 마음을 표현할 지 모르겠어',ago:'13분 전',likes:2,liked:false,views:5,
+      comments:[{name:'연애고수',ago:'10분 전',text:'솔직하게 말하는 게 제일 좋아요. 응원합니다!',likes:1,liked:false},{name:'짝사랑중',ago:'8분 전',text:'저도 같은 고민이에요 ㅠㅠ',likes:0,liked:false}]},
+    {id:'b4',content:'기숙사 세탁실 건조기 3번 고장났어요. 쓰실 분들 참고하세요!',ago:'1시간 전',likes:4,liked:false,views:21,
+      comments:[{name:'빨래요정',ago:'50분 전',text:'정보 감사합니다 🙏',likes:2,liked:false}]}
+  ],
+  chats: [
+    {id:'k1',type:'room',title:'구영리 원룸',n:2,ago:'방금 전',unread:0,msgs:[['구영리새내기','안녕하세요! 원룸 보고 연락드려요','오후 04:58'],['me','네 안녕하세요~ 아직 계약 가능해요','오후 05:01'],['구영리새내기','집 보러 가도 될까요?','오후 05:03']]},
+    {id:'k2',type:'connect',title:'탁구 소모임 모집합니다🏓',n:2,ago:'1분 전',unread:0,msgs:[['핑퐁핑퐁','환영합니다! 이번 주 수요일 7시에 봬요','오후 04:40'],['me','넵! 라켓 없어도 되나요?','오후 04:42'],['핑퐁핑퐁','체육관에 라켓 있어요','오후 04:44'],['핑퐁핑퐁','탁구 재밌어요!','오후 04:45']]},
+    {id:'k3',type:'carpool',title:'얼른 가자~',n:2,ago:'1분 전',unread:0,msgs:[['택시메이트','안녕하세요! 울산역 카풀 참여해 주셔서 감사해요','오후 04:41'],['택시메이트','KTX 시간이 몇 시세요?','오후 04:41'],['me','저는 6시 30분 기차예요','오후 04:45'],['택시메이트','저도 비슷해요. 택시비는 도착해서 나눠요','오후 04:47'],['me','혹시 6시에 기숙사 앞에서 출발 괜찮으세요?','오후 04:50'],['택시메이트','넵 그때 뵐게요!','오후 04:52']]},
+    {id:'k4',type:'connect',title:'미적분학 스터디',n:2,ago:'2분 전',unread:0,msgs:[['수학싫어','스터디 참여 감사해요!','오후 04:30'],['수학싫어','미적분 너무 어려워요 ㅠㅠ','오후 04:31']]},
+    {id:'k5',type:'tutor',title:'고2 남학생 수학 과외 모집합니다',n:2,ago:'2분 전',unread:0,msgs:[['me','안녕하세요 과외 문의드려요','오후 04:20'],['무거동학부모','주 몇회 수업 가능하신가요?','오후 04:25']]},
+    {id:'k6',type:'item',title:'전공서적 팔아요',n:2,ago:'3분 전',unread:1,msgs:[['책사러옴','안녕하세요! 구매 가능할까요?','오후 04:18']]},
+    {id:'k7',type:'carpool',title:'같이 가요!!',n:2,ago:'4분 전',unread:0,msgs:[['울산역가요','같이 가요!! 저도 울산역 가요','오후 04:01'],['울산역가요','몇시에 뵐까요?','오후 04:02']]},
+    {id:'k8',type:'connect',title:'마라탕 드실 분',n:2,ago:'6분 전',unread:0,msgs:[['마라탕러버','몇 단계 드세요?','오후 03:50'],['me','2단계요! 꿔바로우도 시켜요','오후 03:52']]}
+  ],
+  support: [
+    {title:'채팅 알림이 안 와요',content:'채팅 메시지가 와도 푸시 알림이 오지 않아요. 설정은 켜져 있습니다.',date:'2025.08.12',done:true},
+    {title:'학과 정보 수정 요청',content:'랩실 정보에 학과가 하나 빠져 있는 것 같아요.',date:'2025.08.13',done:false}
+  ],
+  mine: []
+};
+let S = clone(INITIAL);
+
+/* =========================================================
+   2. 공용 렌더 조각
+   ========================================================= */
+const BACK = (act = 'back') => `<div class="lead"><button class="ib" data-act="${act}" aria-label="뒤로">${ic('back_ios', 24, '#000')}</button></div>`;
+const BACK_A = (act = 'back') => `<div class="lead"><button class="ib" data-act="${act}" aria-label="뒤로">${ic('back', 24, '#000')}</button></div>`;
+function appbar(bg, title, opt = {}){
+  return `<header class="appbar" style="background:${bg}"><div class="tb">
+    ${opt.noBack ? '' : (opt.arrow ? BACK_A() : BACK())}
+    <div class="ttl" ${opt.ttlStyle ? `style="${opt.ttlStyle}"` : ''}>${title}</div>
+    ${opt.acts ? `<div class="acts">${opt.acts}</div>` : ''}
+  </div></header>`;
+}
+const T20 = s => `<span class="w7" style="font-size:20px">${s}</span>`;
+function banner(text, img, opt = {}){
+  const fs = opt.fs || 18, is = opt.is || 130, gap = opt.gap == null ? 10 : opt.gap;
+  return `<div class="row" style="justify-content:center">
+    <div class="w7 pre" style="font-size:${fs}px;text-align:left">${text}</div>
+    ${gap ? `<div style="width:${gap}px"></div>` : ''}
+    <img src="${A}${img}.webp" alt="" style="width:${is}px;height:${is}px;object-fit:contain">
+  </div>`;
+}
+function avatars(cur, max, r = 20, sp = 22){
+  let disp, fill;
+  if (max <= 4){ disp = max; fill = cur; } else { disp = 4; fill = cur >= 3 ? 3 : cur; }
+  let h = `<div style="position:relative;flex:0 0 auto;width:${disp * sp + r}px;height:${r * 2}px">`;
+  for (let i = 0; i < disp; i++){
+    const empty = i < disp - fill;
+    h += empty
+      ? `<div class="av e" style="right:${i * sp}px;width:${r * 2}px;height:${r * 2}px">${ic('add', r * .8, '#BDBDBD')}</div>`
+      : `<div class="av" style="right:${i * sp}px;width:${r * 2}px;height:${r * 2}px"><img src="${A}profile.webp" alt=""></div>`;
+  }
+  return h + '</div>';
+}
+function connectCard(p, home){
+  return `<div class="card" data-act="connectDetail" data-arg="${p.id}" style="${home ? 'margin-bottom:12.66px' : ''}">
+    <div class="row" style="justify-content:space-between">
+      <div class="col" style="align-items:flex-start;min-width:0">
+        <span class="chip">${esc(p.sub)}</span>
+        <div style="height:6px"></div>
+        <div class="w7 ell" style="width:156px;font-size:16px">${esc(p.title)}</div>
+        <div style="height:2px"></div>
+        <div class="ell" style="width:195px;font-size:${home ? 13 : 14}px;color:var(--g600)">${esc(p.content)}</div>
+      </div>
+      ${avatars(p.cur, p.max)}
+    </div>
+    <div style="height:8px"></div>
+    <div class="row" style="font-size:12px;color:var(--g600)">
+      <span>${esc(p.ago)}</span><span style="width:8px"></span><span style="white-space:pre">·  조회 ${p.views}</span>
+      <span class="sp"></span><span style="font-size:16px;color:#000">${p.cur}명 / ${p.max}명</span>
+    </div>
+  </div>`;
+}
+const boardTitle = b => b.content.length > 20 ? b.content.slice(0, 20) + '...' : b.content;
+function udjCard(b, home){
+  return `<div class="udj" data-act="boardDetail" data-arg="${b.id}" style="${home ? 'margin-bottom:12.66px' : 'margin:8px 16px'}">
+    <div class="row" style="justify-content:space-between">
+      <div class="row sp"><img src="${A}green.webp" alt="" style="width:20px;height:20px"><span style="width:4px"></span>
+        <span class="w7 ell" style="font-size:16px">${esc(boardTitle(b))}</span></div>
+      <span style="font-size:12px;color:var(--g600);margin-left:8px;flex:0 0 auto">${esc(b.ago)}</span>
+    </div>
+    <div style="height:4px"></div>
+    <div style="font-size:${home ? 13 : 14}px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:10;-webkit-box-orient:vertical;overflow:hidden">${esc(b.content)}</div>
+    <div style="height:10px"></div>
+    <div class="row" style="color:var(--g600)">
+      ${ic('thumb_o', 20, '#757575')}<span style="width:4px"></span><span style="font-size:${home ? 12 : 14}px">${b.likes}</span>
+      <span style="width:10px"></span>
+      ${ic('bubble_o', 20, '#757575')}<span style="width:4px"></span><span style="font-size:14px">${b.comments.length}</span>
+      <span class="sp"></span><span style="font-size:12px">조회 ${b.views}</span>
+    </div>
+  </div>`;
+}
+function emptyState(icon, t1, t2, h = 337.6){
+  return `<div class="col" style="height:${h}px;align-items:center;justify-content:center">
+    ${ic(icon, 64, '#BDBDBD')}<div style="height:16px"></div>
+    <div class="w7" style="font-size:18px;color:var(--g600);font-weight:500">${t1}</div>
+    ${t2 ? `<div style="height:8px"></div><div style="font-size:14px;color:var(--g500)">${t2}</div>` : ''}
+  </div>`;
+}
+/* CSS로 그린 상품 썸네일 (실사 사진 대신) */
+function thumb(kind, size = 100, radius = 8){
+  const s = size / 100;
+  const box = (x, y, w, h, bg, r = 2, extra = '') => `<div style="position:absolute;left:${x * s}px;top:${y * s}px;width:${w * s}px;height:${h * s}px;background:${bg};border-radius:${r * s}px;${extra}"></div>`;
+  let inner = '', bg = '#EEEEEE';
+  switch (kind){
+    case 'box': bg = 'linear-gradient(180deg,#E9ECEF 0 72%,#C9B79C 72%)';
+      inner = box(14, 22, 52, 54, '#1E4FD8', 3) + box(24, 18, 52, 56, '#2B5FE8', 3) + box(34, 14, 52, 58, '#3A6CF0', 3, 'box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)') + box(52, 14, 1.5, 58, 'rgba(255,255,255,.35)', 0); break;
+    case 'fridge': bg = 'linear-gradient(90deg,#F3F1EE 0 22%,#E2DCD3 22% 26%,#F7F5F2 26%)';
+      inner = box(28, 16, 44, 64, '#A9CDEB', 6, 'box-shadow:inset -4px 0 0 rgba(0,0,0,.06)') + box(30, 40, 40, 1.2, 'rgba(0,0,0,.15)', 0) + box(62, 24, 2.5, 12, '#7FA8CC', 2) + box(0, 80, 100, 20, 'linear-gradient(90deg,#9C7A55,#B48D63)', 0); break;
+    case 'book': bg = '#D8D3CC';
+      inner = box(22, 8, 56, 84, 'linear-gradient(180deg,#F6B12B 0 46%,#1D2533 46%)', 3, 'box-shadow:2px 3px 6px rgba(0,0,0,.25)') + box(28, 18, 44, 5, 'rgba(0,0,0,.55)', 1) + box(28, 27, 30, 3, 'rgba(0,0,0,.4)', 1) + box(26, 56, 48, 2, 'rgba(255,255,255,.55)', 1, 'transform:rotate(-14deg)') + box(30, 64, 44, 2, 'rgba(120,200,255,.7)', 1, 'transform:rotate(-10deg)'); break;
+    case 'laptop': bg = 'linear-gradient(135deg,#D9D9D9,#BDBDBD)';
+      inner = box(14, 20, 72, 58, 'linear-gradient(160deg,#E6E6E6,#CFCFCF)', 6, 'box-shadow:0 2px 5px rgba(0,0,0,.15)') + box(45, 42, 10, 12, '#9E9E9E', 50) + box(70, 0, 30, 100, 'linear-gradient(120deg,transparent 40%,rgba(190,120,110,.45) 41% 46%,transparent 47%)', 0); break;
+    case 'bike': bg = '#E8EEF2';
+      inner = `<div style="position:absolute;left:${12 * s}px;top:${46 * s}px;width:${30 * s}px;height:${30 * s}px;border:${4 * s}px solid #37474F;border-radius:50%"></div><div style="position:absolute;left:${58 * s}px;top:${46 * s}px;width:${30 * s}px;height:${30 * s}px;border:${4 * s}px solid #37474F;border-radius:50%"></div>` + box(27, 58, 46, 3.5, '#2E7D32', 2, 'transform:rotate(-28deg);transform-origin:left center') + box(44, 40, 30, 3.5, '#2E7D32', 2) + box(40, 36, 10, 3, '#212121', 2); break;
+    case 'room': bg = 'linear-gradient(180deg,#F5EFE6 0 64%,#C9A27A 64%)';
+      inner = box(58, 12, 30, 34, '#BFE3FF', 2, 'border:3px solid #fff') + box(8, 48, 46, 22, '#E7E2DA', 4) + box(8, 40, 14, 12, '#FFFFFF', 3) + box(66, 52, 22, 22, '#8D6E63', 2); break;
+    case 'room2': bg = 'linear-gradient(180deg,#EEF2F5 0 66%,#B9926B 66%)';
+      inner = box(10, 14, 36, 36, '#CDE8FF', 2, 'border:3px solid #fff') + box(54, 46, 38, 24, '#90A4AE', 6) + box(18, 58, 26, 10, '#ECEFF1', 3); break;
+    case 'room3': bg = 'linear-gradient(180deg,#FAF7F2 0 62%,#D7B48E 62%)';
+      inner = box(30, 10, 40, 30, '#D6ECFF', 2, 'border:3px solid #fff') + box(12, 48, 52, 20, '#F1E4D3', 4) + box(70, 40, 18, 34, '#A1887F', 2); break;
+  }
+  return `<div style="position:relative;width:${size}px;height:${size}px;border-radius:${radius}px;overflow:hidden;background:${bg};flex:0 0 auto">${inner}</div>`;
+}
+const BADGE = {carpool:['카풀','#4CAF50'], item:['중고','#FF9800'], tutor:['중고','#FF9800'], room:['중고','#FF9800'], connect:['커넥트','#2196F3']};
+const CHAT_CAT = {carpool:'택시 카풀', item:'중고 거래', tutor:'중고 거래', room:'중고 거래', connect:'유니커넥트'};
+function profGrid(){ // ParticipantProfileGrid (2명): canvas 49.5, 각 36
+  return `<div style="position:relative;width:49.5px;height:49.5px;flex:0 0 auto">
+    <div style="position:absolute;left:0;top:0;width:36px;height:36px;border-radius:16px;overflow:hidden;background:#E0E0E0"><img src="${A}profile.webp" alt="" style="width:100%;height:100%"></div>
+    <div style="position:absolute;right:0;bottom:0;width:36px;height:36px;border-radius:16px;overflow:hidden;background:#E0E0E0"><img src="${A}profile.webp" alt="" style="width:100%;height:100%"></div>
+  </div>`;
+}
+const circ = (d, extra = '') => `<div style="width:${d}px;height:${d}px;border-radius:50%;overflow:hidden;background:#E0E0E0;flex:0 0 auto;${extra}"><img src="${A}profile.webp" alt="" style="width:100%;height:100%"></div>`;
+
+/* =========================================================
+   3. 화면 정의
+   ========================================================= */
+const SC = {};
+
+/* ---------- 홈 ---------- */
+SC.home = { bg: () => '#E3F2FD', render(){
+  const svc = (t, img, act, arg) => `<div class="sp col" data-act="${act}" data-arg="${arg}" style="height:97.06px;align-items:center;justify-content:center;flex:1 1 0">
+      <img src="${A}${img}.webp" alt="" style="width:39px;height:39px;object-fit:contain">
+      <div style="height:8.44px"></div>
+      <div style="font-size:10.92px;text-align:center">${t}</div></div>`;
+  const g = '<div style="width:7.8px;flex:0 0 auto"></div>';
+  const head = (t, act, arg) => `<div class="row"><div class="w7 ell sp" style="font-size:19.5px">${t}</div><div style="width:7.8px"></div>
+      <div data-act="${act}" data-arg="${arg}" style="font-size:13.65px;color:#666">더보기</div></div><div style="height:16.88px"></div>`;
+  const pop = ut => S.popular[ut].map(id => S.connect.find(p => p.id === id)).filter(Boolean);
+  const udj = [S.board[2], S.board[1], S.board[0]].filter(Boolean).slice(0, 3);
+  return `
+  <header class="appbar" style="background:#fff"><div class="tb">
+    <div class="row" style="position:absolute;left:16px;top:0;height:56px">
+      <img src="${A}logo.webp" alt="" style="width:42.9px;height:42.9px"><span style="width:.8px"></span>
+      <span class="w7" style="font-size:19.5px">Uniway</span>
+    </div>
+    <button class="ib" data-act="push" data-arg="profile" aria-label="프로필" style="position:absolute;right:10px;top:5px;width:46px;height:46px">${sy('person', 30, '#000')}</button>
+  </div></header>
+  <div class="scroll" style="background:#E3F2FD">
+    <div style="background:linear-gradient(180deg,#fff 0%,#E3F2FD 30%,#E3F2FD 100%);padding:21.1px 17.55px 16.88px">
+      <div class="w7 ell" style="font-size:21.45px">안녕하세요, ${ME}님</div>
+      <div style="height:4.22px"></div>
+      <div style="font-size:17.55px;color:#666">즐거운 UNIST 생활 되세요</div>
+      <div style="height:21.1px"></div>
+      <div style="background:#fff;border-radius:16px;border:1.5px solid rgba(255,255,255,.3);padding:9.75px;box-shadow:0 8px 20px 2px rgba(255,255,255,.4),0 4px 15px rgba(0,0,0,.1)">
+        <div class="row">${svc('유니커넥트','uniconnect','push','connect')}${g}${svc('택시 카풀','taxi','push','carpool')}${g}${svc('중고 거래','bag','push','market')}${g}${svc('유대전','daejeon','push','board')}</div>
+        <div class="row">${svc('랩실 정보','lab','push','lab')}${g}${svc('학사 일정','calendar','push','calendar')}${g}${svc('문의사항','qna','push','support')}${g}
+          <div class="col" style="width:78px;flex:0 0 auto;align-items:center">${sy('add', 39, '#9E9E9E')}<div style="height:8.44px"></div><div style="font-size:12px;color:#9E9E9E">추가 예정</div></div>
+        </div>
+      </div>
+    </div>
+    <div style="background:#fff;border-radius:20px 20px 0 0">
+      <div style="padding:15.6px">
+        ${head('인기 학부생 포스트', 'pushConnect', '0')}
+        ${pop(0).map(p => connectCard(p, true)).join('')}
+        <div style="height:16.88px"></div>
+        ${head('인기 대학원생 포스트', 'pushConnect', '1')}
+        ${pop(1).map(p => connectCard(p, true)).join('')}
+      </div>
+      <div style="padding:15.6px">
+        ${head('인기 유대전 포스트', 'push', 'board')}
+        ${udj.map(b => udjCard(b, true)).join('')}
+      </div>
+      <div style="height:16.88px"></div>
+    </div>
+  </div>`;
+}};
+
+/* ---------- 택시 카풀 ---------- */
+SC.carpool = { bg: () => '#F5F5F5', fab: true, render(p){
+  const days = []; for (let i = 0; i < 7; i++){ const d = TODAY.d + i; days.push({d, w: dowOf(8, d)}); }
+  let list = S.carpool.slice();
+  if (p.date) list = list.filter(c => c.d === p.date);
+  if (p.q) list = list.filter(c => (c.from + c.to + c.title).includes(p.q));
+  const dayCol = w => w === '토' ? '#2196F3' : w === '일' ? 'rgb(255,63,63)' : '#757575';
+  const numCol = w => w === '토' ? '#2196F3' : w === '일' ? 'rgb(255,82,82)' : '#000';
+  const bar = p.searching
+    ? `<header class="appbar" style="background:${BAR_G}"><div class="tb" style="padding:4px 16px">
+        <div class="row" style="height:48px;border:1px solid #BDBDBD;border-radius:28px;background:#fff;padding:0 4px 0 16px">
+          ${ic('search', 24, '#8B95A1')}<input data-in="carq" value="${esc(p.q || '')}" placeholder="검색어를 입력해주세요" style="flex:1;margin-left:12px;font-size:16px" aria-label="검색">
+          <button class="ib" data-act="carSearchClose" aria-label="검색 닫기">${ic('close', 24, '#8B95A1')}</button>
+        </div></div></header>`
+    : appbar(BAR_G, T20('택시 카풀'), {acts: `<button class="ib" data-act="carSearch" aria-label="검색">${ic('search', 24, '#8B95A1')}</button>`});
+  return `${bar}
+  <div class="scroll" style="background:#F5F5F5">
+    <div style="background:${GRAD_G}">
+      <div style="height:10px"></div>
+      ${p.q ? '' : banner('Uniway와\n택시 카풀', 'taxi', {fs: 20, is: 170, gap: 0})}
+      <div style="height:16px"></div>
+      <div style="height:101.28px;padding:8px 16px">
+        <div class="row" style="justify-content:space-between">${days.map((x, i) => `<div style="width:40.75px;margin-right:${i === 6 ? 0 : 8}px;text-align:center;font-size:12px;color:${dayCol(x.w)}">${x.w}</div>`).join('')}</div>
+        <div style="height:8px"></div>
+        <div class="row" style="justify-content:space-between">${days.map((x, i) => {
+          const sel = p.date === x.d, today = x.d === TODAY.d;
+          return `<div style="margin-right:${i === 6 ? 0 : 8}px"><div data-act="carDate" data-arg="${x.d}" class="col" style="width:42.07px;height:42.07px;align-items:center;justify-content:center;border-radius:12px;
+            background:${sel ? 'rgba(115,190,255,.2)' : '#fff'};border:${sel ? '2px solid #73BEFF' : '1px solid #E0E0E0'}">
+            ${today ? '<div style="width:4px;height:4px"></div>' : ''}
+            <div style="font-size:14px;${sel ? 'font-weight:700;color:#73BEFF' : 'color:' + numCol(x.w)}">${x.d}</div>
+            ${today ? `<div style="width:4px;height:4px;border-radius:50%;background:${sel ? '#73BEFF' : '#9E9E9E'}"></div>` : ''}
+          </div></div>`; }).join('')}</div>
+      </div>
+    </div>
+    ${list.length ? list.map(c => `<div style="padding:6px 16px"><div data-act="carDetail" data-arg="${c.id}" style="background:#fff;border-radius:16px;padding:10px 20px 20px">
+        <div class="row" style="justify-content:space-between;align-items:flex-start">
+          <div><div style="font-size:12px;color:#9E9E9E">출발 시간</div><div style="height:4px"></div><div style="font-size:16px">${c.m}월 ${c.d}일 (${dowOf(c.m, c.d)}) ${c.time}</div></div>
+          <div><div style="font-size:12px;color:#9E9E9E">인원 수</div><div style="height:4px"></div><div style="font-size:16px">${c.cur}명 / ${c.max}명</div></div>
+        </div>
+        <div class="divider" style="--dv:#73BEFF"></div>
+        <div class="row" style="padding:5px 10px">
+          <div class="row sp" style="flex:1 1 0"><div style="width:8px;height:8px;border-radius:50%;background:#73BEFF;flex:0 0 auto"></div><span style="width:8px"></span><span class="w7 ell" style="font-size:16px">${esc(c.from)}</span></div>
+          <span style="width:20px"></span>${ic('arrow_r', 16, '#000')}<span style="width:20px"></span>
+          <div class="row sp" style="flex:1 1 0">${ic('pin', 20, '#73BEFF')}<span style="width:8px"></span><span class="w7 ell" style="font-size:16px">${esc(c.to)}</span></div>
+        </div>
+      </div></div>`).join('')
+      : `<div class="col" style="height:337.6px;align-items:center;justify-content:center">${ic(p.q ? 'search' : 'car', 64, '#BDBDBD')}<div style="height:16px"></div>
+          <div style="font-size:18px;color:var(--g600)">${p.q ? '검색 결과가 없어요' : '개설된 카풀 포스트가 없어요'}</div><div style="height:8px"></div>
+          <div style="font-size:14px;color:var(--g500)">${p.q ? '다른 검색어를 입력해보세요' : '첫 번째 카풀을 만들어보세요!'}</div></div>`}
+    <div style="height:12px"></div>
+  </div>
+  <button class="fab" data-act="push" data-arg="carpoolWrite" aria-label="카풀 개설">${ic('add', 28, '#000')}</button>`;
+}};
+
+/* ---------- 유니커넥트 ---------- */
+const UC_TABS = ['전체','즐기기','구해요','운동','기타'];
+function connectFiltered(p){
+  return S.connect.filter(c => c.ut === p.ut).filter(c => p.child ? c.sub === p.child : (p.idx ? parentOf(c.sub) === UC_TABS[p.idx] : true));
+}
+SC.connect = { bg: () => '#F5F5F5', fab: true, init: p => { if (p.ut == null) p.ut = 0; p.idx = 0; p.child = null; }, render(p){
+  const posts = connectFiltered(p);
+  const tabT = (i, t) => `<div class="ttlbtn" data-act="ucTab" data-arg="${i}" style="color:${p.ut === i ? '#000' : '#9E9E9E'}">${t}</div>`;
+  const allOn = p.idx === 0 && !p.child;
+  return `${appbar(BAR_G, tabT(0, '학부생') + tabT(1, '대학원생'), {ttlStyle: 'left:56px;right:56px'})}
+  <div class="scroll" style="background:#F5F5F5">
+    <div style="background:${GRAD_G}">
+      <div style="height:30px"></div>
+      ${banner('Uniway와\n함께 즐기는\n캠퍼스 내 만남', 'uniconnect')}
+      <div style="height:20px"></div>
+      <div class="row" style="padding:16px">
+        <div class="row sp nos" style="overflow-x:auto">
+          <div class="pill ${allOn ? 'on' : ''}" data-act="ucCat" data-arg="0">전체</div>
+          ${p.child ? `<div class="pill" style="background:#BBDEFB;border-color:#64B5F6;color:#2196F3">${esc(p.child)}<span style="width:4px"></span><span data-act="ucCat" data-arg="0">${ic('close', 16, '#2196F3')}</span></div>` : ''}
+          ${UC_TABS.slice(1).map((t, i) => `<div class="pill ${p.idx === i + 1 && !p.child ? 'on' : ''}" data-act="ucCat" data-arg="${i + 1}">${t}</div>`).join('')}
+        </div>
+        <div style="width:10px"></div>
+        <div data-act="ucFilter" style="width:38px;height:38px;border-radius:50%;background:#fff;border:1px solid #E0E0E0;display:grid;place-items:center;flex:0 0 auto" aria-label="카테고리">${ic('down', 20, '#000')}</div>
+      </div>
+    </div>
+    ${posts.length ? posts.map((c, i) => `${i ? '<div style="height:12px"></div>' : ''}<div style="padding:0 16px">${connectCard(c)}</div>`).join('')
+      : emptyState('people', '개설된 유니커넥트 포스트가 없어요', '첫 번째 유니커넥트를 만들어보세요!')}
+    <div style="height:40px"></div>
+  </div>
+  <button class="fab ${p.fabOpen ? 'open' : ''}" data-act="ucFab" aria-label="모임 만들기">${ic('add', 28, '#000')}</button>`;
+}};
+
+/* ---------- 중고 거래 ---------- */
+SC.market = { bg: () => '#FFFFFF', fab: true, init: p => { p.cat = p.cat || 'item'; }, render(p){
+  let list = S.market[p.cat];
+  if (p.q) list = list.filter(x => x.title.includes(p.q));
+  const tabT = (k, t) => `<div class="ttlbtn" data-act="mkCat" data-arg="${k}" style="color:${p.cat === k ? '#000' : '#9E9E9E'}">${t}</div>`;
+  const bar = p.searching
+    ? `<header class="appbar" style="background:${BAR_W}"><div class="tb" style="padding:4px 16px">
+        <div class="row" style="height:48px;border:1px solid #BDBDBD;border-radius:28px;background:#fff;padding:0 4px 0 16px">
+          ${ic('search', 24, '#8B95A1')}<input data-in="mkq" value="${esc(p.q || '')}" placeholder="검색어를 입력해주세요" style="flex:1;margin-left:12px;font-size:16px" aria-label="검색">
+          <button class="ib" data-act="mkSearchClose" aria-label="검색 닫기">${ic('close', 24, '#8B95A1')}</button>
+        </div></div></header>`
+    : appbar(BAR_W, tabT('item', '상품') + tabT('tutor', '과외') + tabT('room', '자취방'), {ttlStyle: 'left:56px;right:56px', acts: `<button class="ib" data-act="mkSearch" aria-label="검색">${ic('search', 24, '#8B95A1')}</button>`});
+  const item = x => {
+    const tut = p.cat === 'tutor';
+    return `<div data-act="mkDetail" data-arg="${x.id}" style="margin-bottom:16px">
+      <div class="row">
+        ${tut ? '' : thumb(x.th) + '<div style="width:12px;flex:0 0 auto"></div>'}
+        <div class="sp">
+          ${tut ? `<span class="chip" style="border-radius:12px;font-weight:500">${esc(x.subject)}</span><div style="height:8px"></div>` : ''}
+          <div class="w7" style="font-size:16px;color:var(--b87);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${esc(x.title)}</div>
+          <div style="height:4px"></div>
+          ${tut ? '' : `<div style="font-size:14px;color:var(--g600)">${esc(x.loc)}</div><div style="height:4px"></div>`}
+          <div class="row"><span class="w7" style="font-size:16px;color:var(--b87)">${p.cat === 'item' ? fmt(x.price) + '원' : tut ? '시급 ' + fmt(x.pay) + '원' : fmt(x.dep) + '/' + fmt(x.rent)}</span>
+            ${tut ? '' : `<span class="sp"></span><span style="font-size:12px;color:var(--g500)">${x.ago}</span>`}</div>
+          ${tut ? `<div style="height:2px"></div><div class="row"><span style="font-size:14px;color:var(--g700)">주 ${x.days}회 · ${x.hours} · ${esc(x.loc)}</span><span class="sp"></span><span style="font-size:12px;color:var(--g500)">${x.ago}</span></div>` : ''}
+        </div>
+      </div>
+      <div style="height:16px"></div><div style="height:1px;background:#E0E0E0"></div>
+    </div>`;
+  };
+  return `${bar}
+  <div class="scroll" style="background:#fff">
+    <div style="background:${GRAD_W}">
+      <div style="height:30px"></div>
+      ${banner('UNIWAY와\n함께하는\n캠퍼스 거래', 'bag')}
+      <div style="height:20px"></div>
+    </div>
+    <div style="padding:10px 16px">
+      ${list.length ? list.map(item).join('') : `<div class="col" style="align-items:center"><div style="height:100px"></div>${ic('bagf', 64, '#BDBDBD')}<div style="height:16px"></div><div style="font-size:16px;color:var(--g600)">${p.q ? '검색 결과가 없습니다' : '등록된 게시글이 없습니다'}</div></div>`}
+    </div>
+  </div>
+  <button class="fab ${p.fabOpen ? 'open' : ''}" data-act="mkFab" aria-label="글쓰기">${ic('add', 28, '#000')}</button>`;
+}};
+function findMarket(id){ for (const k of ['item','tutor','room']){ const x = S.market[k].find(y => y.id === id); if (x) return [k, x]; } return []; }
+SC.marketDetail = { bg: () => '#fff', render(p){
+  const [k, x] = findMarket(p.id); if (!x) return '';
+  const T = {item:'상품 상세 보기', tutor:'과외 상세 보기', room:'방 상세 보기'}[k];
+  const joined = S.chats.some(c => c.src === x.id);
+  let info;
+  if (k === 'item') info = `<div class="w7" style="font-size:24px">${esc(x.title)}</div><div style="height:16px"></div>
+      <div class="w7" style="font-size:20px">${fmt(x.price)}원</div><div style="height:16px"></div>
+      <div class="w7" style="font-size:16px">거래 장소</div><div style="height:8px"></div><div style="font-size:14px">${esc(x.loc)}</div><div style="height:16px"></div>
+      <div class="w7" style="font-size:16px">상품 설명</div><div style="height:8px"></div><div style="font-size:14px;line-height:1.5">${esc(x.desc)}</div>`;
+  else if (k === 'tutor') info = `<span class="chip" style="border-radius:12px">${esc(x.subject)}</span><div style="height:12px"></div><div class="w7" style="font-size:24px">${esc(x.title)}</div><div style="height:16px"></div>
+      <div class="w7" style="font-size:20px">시급 ${fmt(x.pay)}원</div><div style="height:16px"></div>
+      <div style="font-size:14px;line-height:1.8;color:var(--g700)">과목: ${esc(x.subject)}<br>주 ${x.days}회 · ${x.hours}<br>위치: ${esc(x.loc)}</div><div style="height:16px"></div>
+      <div class="w7" style="font-size:16px">상세 설명</div><div style="height:8px"></div><div style="font-size:14px;line-height:1.5">${esc(x.desc)}</div>`;
+  else info = `<div class="w7" style="font-size:24px">${esc(x.title)}</div><div style="height:16px"></div>
+      <div class="w7" style="font-size:20px">${fmt(x.dep)}만원 / ${fmt(x.rent)}만원</div><div style="height:16px"></div>
+      <div class="w7" style="font-size:16px">장소</div><div style="height:8px"></div><div style="font-size:14px">${esc(x.loc)}</div><div style="height:16px"></div>
+      <div class="w7" style="font-size:16px">방 설명</div><div style="height:8px"></div><div style="font-size:14px;line-height:1.5">${esc(x.desc)}</div>`;
+  return `${appbar('#fff', `<span class="w7" style="font-size:18px">${T}</span>`)}
+  <div class="scroll" style="bottom:88px">
+    ${k === 'tutor' ? '' : `<div style="height:300px;background:#EEEEEE">${thumb(x.th, 390, 0).replace('width:390px;height:390px', 'width:390px;height:300px')}</div>
+      <div style="height:8px"></div><div class="row" style="justify-content:center"><div style="width:8px;height:8px;border-radius:50%;background:#424242"></div></div><div style="height:8px"></div>`}
+    <div style="padding:16px">${info}<div style="height:16px"></div><div style="font-size:14px;color:var(--g500)">${x.ago}</div></div>
+  </div>
+  <div style="position:absolute;left:0;right:0;bottom:0;padding:16px;background:#fff">
+    <button class="btn" data-act="mkChat" data-arg="${x.id}" style="border-radius:8px;${joined ? 'background:#E0E0E0;color:#757575' : ''}" ${joined ? 'disabled' : ''}>${joined ? '이미 거래 중인 게시글입니다.' : '채팅하기'}</button>
+  </div>`;
+}};
+
+/* ---------- 대나무숲 (코드명: 유대전) ---------- */
+SC.board = { bg: () => '#F5F5F5', render(p){
+  const can = (p.draft || '').trim().length > 0;
+  return `${appbar(BAR_G, T20('대나무숲'), {acts: `<div style="padding-right:8px"><button class="ib" data-act="push" data-arg="boardMine" aria-label="내가 요청한 잔디">${ic('article', 24, '#000')}</button></div>`})}
+  <div class="scroll" style="background:#F5F5F5">
+    <div style="background:${GRAD_G}"><div style="height:30px"></div>${banner('UNIWAY가 대신\n전해드립니다!', 'daejeon')}<div style="height:20px"></div></div>
+    <div class="udj" style="margin:16px">
+      <div class="row"><img src="${A}green.webp" alt="" style="width:20px;height:20px"><span style="width:4px"></span><span class="w7" style="font-size:18px">새로운 잔디 심기</span>
+        <span class="sp"></span><button data-act="bdRequest" id="bdReq" class="w7" style="height:48px;min-width:64px;padding:0 12px;font-size:16px;color:${can ? '#73BEFF' : '#9E9E9E'}">요청</button></div>
+      <div style="height:6px"></div>
+      <textarea data-in="bddraft" rows="2" class="inp" placeholder="무엇을 전해드릴까요?" style="padding:16px 12px;line-height:1.5" aria-label="무엇을 전해드릴까요?">${esc(p.draft || '')}</textarea>
+      <div style="height:12px"></div>
+    </div>
+    ${S.board.map(b => udjCard(b)).join('')}
+    <div style="height:20px"></div>
+  </div>`;
+}};
+SC.boardMine = { bg: () => '#F5F5F5', render(){
+  const mine = S.mine.filter(m => m.kind === 'board');
+  return `${appbar(BAR_G, T20('내가 요청한 잔디'))}
+  <div class="scroll" style="background:#F5F5F5"><div style="height:8px"></div>
+    ${mine.length ? mine.map(m => `<div class="udj" style="margin:8px 16px">
+      <div class="row"><img src="${A}green.webp" alt="" style="width:20px;height:20px"><span style="width:4px"></span>
+        <span class="w7" style="padding:2px 8px;border-radius:12px;background:#FF9800;color:#fff;font-size:10px">승인 대기중</span><span class="sp"></span><span style="font-size:12px;color:var(--g600)">방금 전</span></div>
+      <div style="height:4px"></div><div style="font-size:14px;line-height:1.5">${esc(m.text)}</div></div>`).join('')
+      : `<div class="col" style="height:360px;align-items:center;justify-content:center;text-align:center"><img src="${A}green.webp" alt="" style="width:48px;height:48px;opacity:.6"><div style="height:16px"></div><div style="font-size:16px;color:var(--g600)">아직 요청한 잔디가 없습니다</div><div style="height:8px"></div><div class="pre" style="font-size:14px;color:var(--g500)">새로운 잔디 심기를 통해\n첫 번째 요청을 시작해보세요!</div></div>`}
+  </div>`;
+}};
+SC.boardDetail = { bg: () => '#fff', render(p){
+  const b = S.board.find(x => x.id === p.id); if (!b) return '';
+  const cm = b.comments.map((c, i) => `<div style="padding:12px 0">
+      <div class="row">${circ(32)}<span style="width:10px"></span><div><div style="font-size:14px">${esc(c.name)}</div><div style="font-size:12px;color:var(--g600)">${esc(c.ago)}</div></div></div>
+      <div style="height:8px"></div>
+      <div style="padding-left:42px"><div style="font-size:14px;line-height:1.4">${esc(c.text)}</div><div style="height:8px"></div>
+        <div class="row" data-act="bdCLike" data-arg="${i}" style="display:inline-flex;color:${c.liked ? '#F44336' : '#757575'}">${ic(c.liked ? 'thumb' : 'thumb_o', 16, c.liked ? '#F44336' : '#757575')}<span style="width:4px"></span><span style="font-size:12px">${c.likes}</span></div></div>
+    </div>${i < b.comments.length - 1 ? '<div style="height:.5px;background:#E0E0E0;margin:0 0 0 42px"></div>' : ''}`).join('');
+  return `${appbar(BAR_W, '')}
+  <div class="scroll" style="bottom:86px;background:#fff">
+    <div style="margin:16px">
+      <div class="row" style="justify-content:space-between;align-items:flex-start"><div class="w7" style="font-size:18px;flex:1;min-width:0">${esc(boardTitle(b))}</div><span style="font-size:14px;color:var(--g600);margin-left:8px;flex:0 0 auto">${esc(b.ago)}</span></div>
+      <div style="height:12px"></div>
+      <div style="font-size:16px;line-height:1.5">${esc(b.content)}</div>
+      <div style="height:16px"></div>
+      <div class="row">
+        <div class="row" data-act="bdLike" style="color:${b.liked ? '#F44336' : '#757575'}">${ic(b.liked ? 'thumb' : 'thumb_o', 20, b.liked ? '#F44336' : '#757575')}<span style="width:4px"></span><span style="font-size:14px">${b.likes}</span></div>
+        <span style="width:20px"></span>
+        <div class="row" style="color:#757575">${ic('bubble_o', 20, '#757575')}<span style="width:4px"></span><span style="font-size:14px">${b.comments.length}</span></div>
+      </div>
+    </div>
+    <div style="margin:0 16px">
+      <div class="w7" style="font-size:16px">댓글</div><div style="height:12px"></div>
+      ${cm || `<div class="col" style="padding:32px;align-items:center">${ic('bubble_o', 48, '#BDBDBD')}<div style="height:16px"></div><div style="font-size:16px;color:var(--g600)">아직 댓글이 없습니다</div><div style="height:8px"></div><div style="font-size:14px;color:var(--g500)">첫 번째 댓글을 남겨보세요!</div></div>`}
+    </div>
+    <div style="height:20px"></div>
+  </div>
+  <div style="position:absolute;left:0;right:0;bottom:0;padding:16px;background:#fff;border-radius:20px 20px 0 0;box-shadow:0 -1px 3px 1px rgba(158,158,158,.1)">
+    <div class="row" style="padding:0 0 0 16px;border:1px solid #E0E0E0;border-radius:8px;background:#fff">
+      <input data-in="bdcomment" data-enter="bdComment" placeholder="댓글을 입력하세요..." style="flex:1;font-size:16px;padding:8px 0" aria-label="댓글 입력">
+      <button class="ib" data-act="bdComment" aria-label="댓글 등록">${ic('send', 24, '#73BEFF')}</button>
+    </div>
+  </div>`;
+}};
+
+/* ---------- 랩실 정보 ---------- */
+const COLLEGES = [
+  {name:'공과대학', icon:'gear', deps:['기계공학과','반도체 소재·부품대학원','신소재공학과','에너지화학공학과','원자력공학과','지구환경도시건설공학과','탄소중립대학원']},
+  {name:'정보바이오융합대학', icon:'hourglass', deps:['디자인학과','바이오메디컬공학과','산업공학과','생명과학과','의과학대학원','인공지능대학원','전기전자공학과','컴퓨터공학과']},
+  {name:'자연과학대학', icon:'science', deps:['물리학과','수리과학과','화학과']},
+  {name:'경영과학부', icon:'work', deps:['경영과학부']}
+];
+SC.lab = { bg: () => '#F5F5F5', render(){
+  return `${appbar(BAR_G, T20('랩실 정보'), {ttlStyle: 'justify-content:flex-start;left:72px'})}
+  <div class="scroll" style="background:#F5F5F5">
+    <div style="background:${GRAD_G}"><div style="height:30px"></div>${banner('학과별로\n연구실 찾기', 'lab')}<div style="height:50px"></div></div>
+    <div style="height:20px"></div>
+    <div style="padding:0 20px">
+      ${COLLEGES.map(c => `<div style="margin-bottom:20px;border-radius:20px;overflow:hidden;background:#fff"><div style="padding:20px">
+        <div class="row">${ic(c.icon, 24, '#000')}<span style="width:10px"></span><span class="w7" style="font-size:18px">${c.name}</span></div>
+        <div style="height:15px"></div>
+        <div class="row" style="flex-wrap:wrap;gap:8px">${c.deps.map(d => `<div data-act="push" data-arg="labList:${d}" style="padding:8px 14px;border-radius:7px;background:#fff;border:1px solid rgba(33,150,243,.4);font-size:14px">${d}</div>`).join('')}</div>
+      </div></div>`).join('')}
+    </div>
+    <div style="height:30px"></div>
+  </div>`;
+}};
+const LABS = [
+  {prof:'김유니', name:'Intelligent Systems Lab', tags:['AI','스마트 제조','로보틱스'], intro:'AI 기반 지능형 시스템과 스마트 제조 기술을 연구합니다.'},
+  {prof:'박웨이', name:'Campus Data & Design Lab', tags:['데이터','HCI','서비스 디자인'], intro:'캠퍼스 생활 데이터를 바탕으로 사람 중심의 서비스를 설계합니다.'}
+];
+SC.labList = { bg: () => '#F5F5F5', render(p){
+  return `${appbar(BAR_G, T20('연구실 목록'))}
+  <div class="scroll" style="background:#F5F5F5">
+    <div class="w7" style="font-size:24px;padding:24px 20px 16px">${esc(p.dep)}</div>
+    ${LABS.map(l => `<div style="margin:0 20px 20px;border-radius:20px;background:#fff;padding:24px">
+      <div class="w7" style="font-size:18px">${l.prof}</div><div style="height:6px"></div>
+      <div style="font-size:14px;color:var(--g500);line-height:1.4">${l.name}</div><div style="height:14px"></div>
+      <div class="row" style="flex-wrap:wrap;gap:8px">${l.tags.map(t => `<span style="padding:6px 12px;border-radius:14px;background:var(--g100);font-size:12px;color:var(--g700)">${t}</span>`).join('')}</div>
+      <div style="height:14px"></div>
+      <div style="background:var(--g100);border-radius:10px;padding:12px"><div class="w7" style="font-size:14px">연구실 한줄 소개</div><div style="height:8px;border-bottom:1px solid #E0E0E0"></div><div style="height:10px"></div><div style="font-size:14px;line-height:1.5">${l.intro}</div></div>
+    </div>`).join('')}
+  </div>`;
+}};
+
+/* ---------- 학사 일정 ---------- */
+const EVENTS = [
+  {d:7, t:'제2학기 수강신청'}, {d:11, t:'여름 계절학기 종강'}, {d:11, t:'2025 하계 학위수여식'},
+  {d:15, t:'광복절'}, {d:22, t:'제1학기 성적 정정 마감'}, {d:26, t:'제2학기 등록 기간'}
+];
+SC.calendar = { bg: () => '#fff', render(p){
+  const first = new Date(2025, 7, 1).getDay(), days = 31;
+  let cells = '';
+  for (let i = 0; i < first; i++) cells += '<div></div>';
+  for (let d = 1; d <= days; d++){
+    const w = (first + d - 1) % 7, we = w === 0 || w === 6;
+    const ev = EVENTS.filter(e => e.d === d), sel = p.sel === d, today = d === TODAY.d;
+    cells += `<div data-act="calDay" data-arg="${d}" style="min-width:0;height:76px;padding:${sel || today ? 4 : 8}px 0 0;${sel || today ? `margin:4px 2px 0;border-radius:8px;background:${sel ? 'rgba(115,190,255,.25)' : 'rgba(158,158,158,.2)'}` : ''}">
+      <div style="text-align:center;font-size:14px;color:${we ? '#9E9E9E' : '#000'}">${d}</div>
+      ${ev.slice(0, 2).map(e => `<div class="ell" style="margin:2px 1px 0;padding:1px 3px;border-radius:3px;background:#E6D7F7;font-size:10px;text-align:center">${e.t}</div>`).join('')}
+    </div>`;
+  }
+  const evs = p.sel ? EVENTS.filter(e => e.d === p.sel) : EVENTS;
+  return `${appbar('#fff', T20('학사 일정'), {arrow: true})}
+  <div class="scroll" style="bottom:210px">
+    <div style="padding:8px 16px"><div class="w7" style="font-size:28px">8월</div></div>
+    <div style="padding:0 4px">
+      <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));text-align:center;font-size:14px;padding:6px 0">${DOW.map((d, i) => `<div style="color:${i === 0 || i === 6 ? '#9E9E9E' : '#000'}">${d}</div>`).join('')}</div>
+      <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr))">${cells}</div>
+    </div>
+  </div>
+  <div style="position:absolute;left:0;right:0;bottom:0;height:214px;background:#fff;border-radius:20px 20px 0 0;box-shadow:0 -2px 10px rgba(0,0,0,.12);display:flex;flex-direction:column">
+    <div style="width:40px;height:4px;border-radius:2px;background:#E0E0E0;margin:8px auto 0"></div>
+    <div class="w7" style="font-size:18px;padding:14px 16px 12px">${p.sel ? `8월 ${p.sel}일` : '8월 이벤트'}</div>
+    <div style="height:1px;background:#EEEEEE"></div>
+    <div class="nos" style="flex:1;overflow-y:auto;padding:12px 16px">
+      ${evs.length ? evs.map(e => `<div class="row" style="margin-bottom:8px;padding:12px;border-radius:8px;border:1px solid #B39DDB">
+        <div style="width:12px;height:12px;border-radius:50%;background:#B39DDB"></div><span style="width:12px"></span>
+        <span class="sp" style="font-size:14px;color:var(--b87)">${e.t}</span><span style="padding:4px 8px;border-radius:8px;background:#9575CD;color:#fff;font-size:10px">8월 ${e.d}일</span></div>`).join('')
+        : '<div style="text-align:center;color:#9E9E9E;font-size:16px;padding:24px 0">이벤트가 없습니다</div>'}
+    </div>
+  </div>`;
+}};
+
+/* ---------- 문의사항 (고객지원) ---------- */
+SC.support = { bg: () => '#F5F5F5', render(p){
+  const can = (p.t || '').trim() && (p.c || '').trim();
+  return `${appbar(BAR_G, T20('고객지원'))}
+  <div class="scroll" style="background:#F5F5F5">
+    <div style="background:${GRAD_G}"><div style="height:30px"></div>${banner('궁금한 것이 있으시다면\n언제든 문의해주세요!', 'qna', {fs: 18, is: 110})}<div style="height:20px"></div></div>
+    <div class="udj" style="margin:16px">
+      <div class="row"><span class="w7" style="font-size:18px">새로운 문의하기</span><span class="sp"></span>
+        <button data-act="spSubmit" id="spBtn" class="w7" style="height:48px;min-width:64px;padding:0 12px;font-size:16px;color:${can ? '#73BEFF' : '#9E9E9E'}">문의</button></div>
+      <div style="height:6px"></div>
+      <input data-in="spt" class="inp" placeholder="제목을 입력해주세요" value="${esc(p.t || '')}" aria-label="제목">
+      <div style="height:3px"></div>
+      <textarea data-in="spc" class="inp" rows="3" placeholder="무엇을 도와드릴까요?" aria-label="내용">${esc(p.c || '')}</textarea>
+    </div>
+    ${S.support.map(q => `<div class="udj" style="margin:8px 16px">
+      <div class="row"><span style="padding:4px 8px;border-radius:12px;background:${q.done ? '#73BEFF' : '#FFC107'};color:#fff;font-size:12px">${q.done ? '답변완료' : '접수중'}</span><span class="sp"></span><span style="font-size:14px;color:var(--g600)">${q.date}</span></div>
+      <div style="height:12px"></div><div class="w7" style="font-size:16px">${esc(q.title)}</div><div style="height:8px"></div>
+      <div style="font-size:14px;line-height:1.5;color:#9E9E9E;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${esc(q.content)}</div></div>`).join('')}
+    <div style="height:20px"></div>
+  </div>`;
+}};
+
+/* ---------- 프로필 (간소화: 내 게시글) ---------- */
+SC.profile = { bg: () => '#fff', render(){
+  return `<div class="scroll" style="top:47px;background:#fff"><div style="padding:0 19.5px">
+    <div style="height:7.8px"></div>
+    <button class="ib" data-act="back" aria-label="뒤로" style="margin-left:-12px">${ic('back_ios', 24, '#000')}</button>
+    <div style="height:11.7px"></div>
+    <div class="row">
+      <div style="width:78px;height:78px;border-radius:50%;border:2px solid #E0E0E0;background:#EEEEEE;overflow:hidden"><img src="${A}profile.webp" alt="" style="width:100%;height:100%"></div>
+      <span style="width:15.6px"></span>
+      <div><div class="w7" style="font-size:19.5px">${ME}</div><div style="height:6px"></div><div style="font-size:14px;color:var(--g600)">UNIST · 학부생</div></div>
+    </div>
+    <div style="height:15.6px"></div><div style="height:2px;border-top:1px solid #E0E0E0;border-bottom:1px solid #E0E0E0"></div><div style="height:15.6px"></div>
+    <div class="w7" style="font-size:19.5px">내 게시글</div><div style="height:12px"></div>
+    ${S.mine.length ? S.mine.map(m => `<div class="row" style="padding:14px 0;border-bottom:1px solid #EEEEEE">
+        <span class="w7" style="padding:4px 8px;border-radius:8px;border:.6px solid ${m.color};color:${m.color};font-size:10px">${m.badge}</span><span style="width:10px"></span>
+        <span class="ell sp" style="font-size:16px">${esc(m.text)}</span><span style="font-size:12px;color:var(--g500)">방금 전</span></div>`).join('')
+      : `<div style="padding:40px 0;text-align:center;color:var(--g500);font-size:15px;line-height:1.8">유니커넥트에 작성한 게시글이 없습니다.<br>카풀에 작성한 게시글이 없습니다.<br>중고거래에 작성한 게시글이 없습니다.</div>`}
+  </div></div>`;
+}};
+
+/* ---------- 글쓰기 (간소화) ---------- */
+function formField(label, inner, mt = 20){ return `<div style="height:${mt}px"></div><div class="lbl">${label}</div><div style="height:8px"></div>${inner}`; }
+const DIV = '<div style="height:10px"></div><div style="height:1px;background:#CAC4D0"></div><div style="height:10px"></div>';
+SC.carpoolWrite = { bg: () => '#fff', init: p => { p.f = {title:'', from:'', to:'', d:null, time:'', max:4}; }, render(p){
+  const f = p.f, days = []; for (let i = 0; i < 7; i++) days.push(TODAY.d + i);
+  return `${appbar('#fff', T20('카풀 개설'))}
+  <div class="scroll" style="bottom:96px;background:#fff"><div style="padding:20px">
+    <div class="row">${circ(50)}<span style="width:12px"></span><span class="w7" style="font-size:20px">${ME}</span></div>
+    <div style="height:10px"></div>
+    <input data-in="f.title" value="${esc(f.title)}" placeholder="제목을 작성해주세요" class="w7" style="width:100%;font-size:20px;padding:8px 4px" aria-label="제목">
+    ${DIV}
+    <div class="lbl">출발지</div><div style="height:8px"></div>
+    <div class="row" style="flex-wrap:wrap;gap:8px">${LOCS.map(l => `<div class="opt ${f.from === l ? 'on' : ''}" data-act="cwSet" data-arg="from:${l}">${l}</div>`).join('')}</div>
+    ${formField('도착지', `<div class="row" style="flex-wrap:wrap;gap:8px">${LOCS.map(l => `<div class="opt ${f.to === l ? 'on' : ''}" data-act="cwSet" data-arg="to:${l}">${l}</div>`).join('')}</div>`)}
+    ${DIV}
+    <div class="lbl">출발 날짜</div><div style="height:8px"></div>
+    <div class="row" style="flex-wrap:wrap;gap:8px">${days.map(d => `<div class="opt ${f.d === d ? 'on' : ''}" data-act="cwSet" data-arg="d:${d}">${8}월 ${d}일 (${dowOf(8, d)})</div>`).join('')}</div>
+    ${formField('출발 시간', `<input data-in="f.time" type="time" value="${esc(f.time)}" class="inp" style="width:160px" aria-label="출발 시간">`)}
+    ${formField('최대 인원 수', `<div class="row" style="gap:8px">${[2,3,4].map(n => `<div class="opt ${f.max === n ? 'on' : ''}" data-act="cwSet" data-arg="max:${n}">${n}명</div>`).join('')}</div>`)}
+  </div></div>
+  <div style="position:absolute;left:0;right:0;bottom:0;padding:20px;background:#fff"><button class="btn" data-act="cwSubmit">카풀 개설</button></div>`;
+}};
+SC.connectWrite = { bg: () => '#fff', init: p => { p.f = {title:'', content:'', sub:'', max:''}; }, render(p){
+  const f = p.f;
+  return `${appbar('#fff', T20(p.ut ? '대학원생 모임 생성' : '학부생 모임 생성'))}
+  <div class="scroll" style="bottom:96px;background:#fff"><div style="padding:20px">
+    <div class="row">${circ(50)}<span style="width:12px"></span><span class="w7" style="font-size:20px">${ME}</span></div>
+    <div style="height:10px"></div>
+    <input data-in="f.title" value="${esc(f.title)}" placeholder="제목을 작성해주세요" class="w7" style="width:100%;font-size:20px;padding:8px 4px" aria-label="제목">
+    <div style="height:8px"></div>
+    <textarea data-in="f.content" rows="4" placeholder="학교 친구들과 가지고 싶은 모임에 대해서&#10;자유롭게 입력해 보세요." style="width:100%;font-size:16px;line-height:1.5;padding:4px" aria-label="내용">${esc(f.content)}</textarea>
+    ${DIV}
+    <div class="lbl">태그</div><div style="height:10px"></div>
+    ${Object.keys(PARENT).map(k => `<div style="font-size:14px;margin:6px 0 8px" class="w7">${k}</div><div class="row" style="flex-wrap:wrap;gap:8px">${PARENT[k].map(t => `<div class="tag ${f.sub === t ? 'on' : ''}" data-act="uwSet" data-arg="sub:${t}">${t}</div>`).join('')}</div>`).join('')}
+    ${DIV}
+    <div class="lbl">인원 수 설정</div><div style="height:8px"></div>
+    <div class="row"><span style="font-size:16px">총 인원 :</span><span style="width:12px"></span><input data-in="f.max" type="number" min="2" max="100" value="${esc(f.max)}" placeholder="모임 총 인원 수 (2-100명)" class="inp" style="flex:1" aria-label="총 인원"></div>
+    <div style="height:6px"></div><div style="font-size:12px;color:var(--g500)">본인도 포함해주세요</div>
+  </div></div>
+  <div style="position:absolute;left:0;right:0;bottom:0;padding:20px;background:#fff"><button class="btn" data-act="uwSubmit">모임 개설</button></div>`;
+}};
+const MKW = {
+  item: {title:'상품 등록', btn:'상품 등록', ok:'상품이 성공적으로 등록되었습니다!', fields:[['price','가격 :','가격을 입력하세요','number'],['loc','거래 장소','거래 장소를 입력해주세요','text'],['desc','상품 설명','상품에 대한 자세한 설명을 작성해 주세요.','area']]},
+  tutor: {title:'과외 포스트 작성', btn:'등록하기', ok:'과외 포스트가 성공적으로 등록되었습니다!', fields:[['subject','과목','예: 수학, 영어, 과학','text'],['pay','시급','예: 30000','number'],['days','주당 수업 일수','예: 2','number'],['hours','회당 수업 시간','예: 2','number'],['loc','장소','예: 구영리 스터디카페','text'],['desc','상세 설명','구체적인 요구사항이나 조건을 자세히 설명해주세요','area']]},
+  room: {title:'자취방 등록', btn:'등록하기', ok:'자취방이 성공적으로 등록되었습니다!', fields:[['dep','보증금 :','보증금을 입력하세요 (만 원)','number'],['rent','월세 :','월세를 입력하세요 (만 원)','number'],['loc','장소','예: 울산역 근처, 구영초 옆','text'],['desc','자취방 설명','자취방에 대한 자세한 설명을 작성해 주세요.','area']]}
+};
+SC.marketWrite = { bg: () => '#fff', init: p => { p.f = {}; }, render(p){
+  const M = MKW[p.k], f = p.f;
+  return `${appbar('#fff', T20(M.title))}
+  <div class="scroll" style="bottom:96px;background:#fff"><div style="padding:20px">
+    <input data-in="f.title" value="${esc(f.title || '')}" placeholder="${p.k === 'tutor' ? '예: 고2 남학생 수학 과외 선생님 구합니다' : '제목을 작성해주세요'}" class="w7" style="width:100%;font-size:20px;padding:8px 4px" aria-label="제목">
+    ${DIV}
+    ${M.fields.map(([k, l, ph, t], i) => formField(l, t === 'area'
+      ? `<textarea data-in="f.${k}" rows="4" class="inp" placeholder="${ph}" aria-label="${l}">${esc(f[k] || '')}</textarea>`
+      : `<input data-in="f.${k}" type="${t}" class="inp" placeholder="${ph}" value="${esc(f[k] || '')}" aria-label="${l}">`, i ? 16 : 4)).join('')}
+  </div></div>
+  <div style="position:absolute;left:0;right:0;bottom:0;padding:20px;background:#fff"><button class="btn" data-act="mwSubmit">${M.btn}</button></div>`;
+}};
+
+/* ---------- 하트 탭: 유니시그널 (공개 예정) ---------- */
+SC.signal = { bg: () => '#FAFAFA', render(){
+  const card = t => `<div style="padding:20px;border-radius:16px;background:rgb(229,240,248);margin-bottom:16px">
+    <div style="font-size:16px">${t}</div><div style="height:12px"></div><div style="font-size:14px;color:var(--b87);line-height:1.4">인연 카드가 도착했어요! 열어서 확인해 보세요</div>
+    <div style="height:16px"></div><div style="text-align:center;font-size:12px;color:var(--g600)">학교 / 학과 / 학번</div><div style="height:20px"></div>
+    <div style="background:#73BEFF;color:#fff;border-radius:25px;padding:14px 0;text-align:center;font-size:14px">카드 열어보기</div></div>`;
+  const prof = () => `<div class="sp" style="background:#fff;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,.1);overflow:hidden">
+    <div style="height:200px;background:#E0E0E0;display:grid;place-items:center"><img src="${A}profile.webp" alt="" style="width:120px;height:120px;opacity:.9"></div>
+    <div style="padding:16px;text-align:center"><div style="font-size:14px">울산 지역 대학</div><div style="height:4px"></div><div style="font-size:12px;color:var(--g600)">학교 인증</div></div></div>`;
+  return `<header class="appbar" style="background:#fff"><div class="tb"><div class="row" style="position:absolute;left:24px;top:0;height:56px">
+      <span class="w7" style="font-size:19.5px">소개팅</span><span style="width:11.7px"></span><span class="w7" style="font-size:19.5px;color:#9E9E9E">미팅</span></div></div></header>
+  <div class="scroll" style="background:#FAFAFA;overflow:hidden">
+    <div style="padding:16px;filter:blur(10px)">${card('7/31 낮 카드')}${card('7/30 낮 카드')}
+      <div style="height:16px"></div><div class="w7" style="font-size:18px">오픈 소개팅</div><div style="height:16px"></div>
+      <div class="row" style="gap:12px;align-items:stretch">${prof()}${prof()}</div></div>
+    <div class="col" style="position:absolute;inset:0;background:rgba(0,0,0,.3);align-items:center;justify-content:center;color:#fff">
+      ${ic('lock', 64, '#fff')}<div style="height:16px"></div><div class="w7" style="font-size:24px">공개 예정</div><div style="height:8px"></div><div style="font-size:16px;color:rgba(255,255,255,.7)">조금만 기다려 주세요!</div>
+    </div>
+  </div>`;
+}};
+
+/* ---------- 채팅 목록 ---------- */
+const CHAT_TABS = ['전체','유니커넥트','택시 카풀','중고 거래'];
+SC.chat = { bg: () => '#fff', init: p => { p.idx = p.idx || 0; }, render(p){
+  const rooms = S.chats.filter(c => !p.idx || CHAT_CAT[c.type] === CHAT_TABS[p.idx]);
+  return `<header class="appbar" style="background:#fff"><div class="tb">
+      <div class="row" style="position:absolute;left:16px;top:0;height:56px"><span class="w7" style="font-size:24px">채팅</span></div>
+      <div class="acts"><button class="ib" data-act="chatRefresh" aria-label="새로고침">${ic('refresh', 24, '#000')}</button></div></div></header>
+  <div style="position:absolute;top:103px;left:0;right:0;padding:12px 16px" class="row">
+    ${CHAT_TABS.map((t, i) => `<div data-act="chatTab" data-arg="${i}" style="margin-right:8px;padding:8px 14px;border-radius:20px;font-size:12px;
+      background:${p.idx === i ? '#1A1A1A' : '#fff'};color:${p.idx === i ? '#F5F5F5' : '#000'};border:1px solid ${p.idx === i ? '#000' : '#E0E0E0'}">${t}</div>`).join('')}
+  </div>
+  <div class="scroll" style="top:163px">
+    ${p.loading ? '<div class="col" style="height:420px;align-items:center;justify-content:center"><div class="spin"></div></div>' : rooms.length ? rooms.map(c => { const [bt, bc] = BADGE[c.type]; return `<div data-act="openRoom" data-arg="${c.id}" class="row" style="padding:16px;margin-bottom:8px">
+      ${profGrid()}<span style="width:12px;flex:0 0 auto"></span>
+      <div class="sp">
+        <div class="row"><span class="w7" style="flex:0 0 auto;padding:4px 8px;border-radius:8px;border:.6px solid ${bc};color:${bc};font-size:10px;background:#fff">${bt}</span><span style="width:8px;flex:0 0 auto"></span>
+          <div class="row sp"><span class="ell" style="font-size:16px;min-width:0">${esc(c.title)}</span><span style="width:4px;flex:0 0 auto"></span><span style="font-size:14px;color:#9E9E9E;flex:0 0 auto">${c.n}</span></div>
+          <span style="width:16px;flex:0 0 auto"></span><span style="font-size:12px;color:#9E9E9E;flex:0 0 auto">${c.ago}</span></div>
+        <div style="height:4px"></div>
+        <div class="row"><span class="ell sp" style="font-size:14px;color:#9E9E9E">${esc(lastMsg(c))}</span>
+          ${c.unread ? `<span class="w7" style="margin-left:8px;padding:2px 6px;border-radius:10px;background:#F44336;color:#fff;font-size:10px">${c.unread}</span>` : ''}</div>
+      </div></div>`; }).join('')
+      : `<div class="col" style="height:450px;align-items:center;justify-content:center">${ic('bubble_o', 58.5, '#BDBDBD')}<div style="height:15.6px"></div><div style="font-size:15.6px;color:var(--g600)">채팅방이 없습니다.</div></div>`}
+  </div>`;
+}};
+const lastMsg = c => c.msgs.length ? c.msgs[c.msgs.length - 1][1] : '';
+
+/* ---------- 채팅방 ---------- */
+SC.room = { bg: () => '#fff', render(p){
+  const c = S.chats.find(x => x.id === p.id); if (!c) return '';
+  let body = '<div style="text-align:center;color:#9E9E9E;font-size:12px;margin:16px 0;padding:6px 12px">2025년 08월 14일</div>';
+  c.msgs.forEach((m, i) => {
+    const me = m[0] === 'me', prev = c.msgs[i - 1], show = !me && (!prev || prev[0] !== m[0]);
+    if (me) body += `<div class="row" style="justify-content:flex-end;align-items:flex-end;margin-bottom:8px">
+        <div class="col" style="align-items:flex-end">${m[3] ? `<span style="font-size:11px;font-weight:300">${m[3]}</span>` : ''}<span style="font-size:10.4px;color:#9E9E9E">${m[2]}</span></div><span style="width:8px"></span>
+        <div style="max-width:273px;padding:10.4px;border-radius:16px;background:#73BEFF;color:#fff;font-size:13.52px;user-select:text">${esc(m[1])}</div></div>`;
+    else body += `<div class="row" style="align-items:flex-start;margin-bottom:8px">
+        ${show ? circ(33.28) : '<div style="width:33.28px;flex:0 0 auto"></div>'}<span style="width:8px;flex:0 0 auto"></span>
+        <div class="sp">${show ? `<div style="padding:0 0 4px 4px;font-size:10.4px;color:#9E9E9E">${esc(m[0])}</div>` : ''}
+          <div class="row" style="align-items:flex-end"><div style="max-width:234px;padding:10.4px;border-radius:16px;background:#F5F5F5;font-size:13.52px;user-select:text">${esc(m[1])}</div>
+          <span style="width:8px"></span><span style="font-size:10.4px;color:#9E9E9E;flex:0 0 auto">${m[2]}</span></div></div></div>`;
+  });
+  return `<header class="appbar" style="background:#fff"><div class="tb">${BACK_A()}
+      <div class="ttl" style="left:56px;right:56px"><span class="ell" style="font-size:22px;font-weight:500;min-width:0">${esc(c.title)}</span><span style="width:8px;flex:0 0 auto"></span><span style="font-size:14px;color:#9E9E9E;flex:0 0 auto">${c.n}</span></div>
+      <div class="acts"><button class="ib" data-act="roomDrawer" aria-label="채팅방 메뉴">${ic('more_v', 24, '#000')}</button></div></div></header>
+  <div class="scroll" id="roomScroll" style="bottom:80px;padding:8px 16px">${body}</div>
+  <div class="row" style="position:absolute;left:0;right:0;bottom:0;padding:16px 16px 16px 24px;background:#fff">
+    <div class="sp" style="background:#F5F5F5;border-radius:24px"><input data-in="msg" data-enter="send" placeholder="메시지 보내기" style="width:100%;padding:12px 16px;font-size:14px" aria-label="메시지 입력"></div>
+    <span style="width:8px"></span><button class="ib" data-act="send" aria-label="전송">${ic('send', 24, '#000')}</button>
+  </div>`;
+}, after(){ const s = $('#roomScroll'); if (s) s.scrollTop = s.scrollHeight; }};
+
+/* 화면 → 호스트용 대표 id */
+const MAIN_ID = {home:'home', carpool:'carpool', carpoolWrite:'carpool', connect:'connect', connectWrite:'connect', market:'market', marketDetail:'market', marketWrite:'market',
+  board:'board', boardDetail:'board', boardMine:'board', chat:'chat', room:'chat', signal:'signal', lab:'lab', labList:'lab', calendar:'calendar', support:'support', profile:'profile'};
+
+/* =========================================================
+   4. 내비게이션 (탭별 스택 = Flutter 중첩 Navigator)
+   ========================================================= */
+const tabs = [[], [], []];
+let cur = 0;
+const ROOTS = ['home', 'signal', 'chat'];
+const EASE = 'cubic-bezier(.2,.8,.2,1)';
+function mk(id, p){
+  const el = document.createElement('section'); el.className = 'screen'; el.dataset.id = id;
+  const e = {id, p: p || {}, el};
+  if (SC[id].init) SC[id].init(e.p);
+  return e;
+}
+function render(e){
+  const keep = $$('.scroll', e.el).map(x => x.scrollTop);
+  const def = SC[e.id];
+  e.el.style.background = def.bg ? def.bg(e.p) : '#fff';
+  e.el.innerHTML = def.render(e.p, e);
+  $$('.scroll', e.el).forEach((x, i) => { if (keep[i]) x.scrollTop = keep[i]; });
+  if (def.after) def.after(e.p, e);
+}
+const top = (t = cur) => tabs[t][tabs[t].length - 1];
+function refresh(){ const e = top(); if (e) render(e); }
+function anim(el, from, to, dur = 250){
+  if (!ANIM) return Promise.resolve();
+  return el.animate([{transform: from}, {transform: to}], {duration: dur, easing: EASE}).finished.catch(() => {});
+}
+function push(id, p, opt = {}){
+  const prev = top(), e = mk(id, p);
+  tabs[cur].push(e); render(e);
+  $('#tab' + cur).appendChild(e.el);
+  closeFabMenus();
+  if (prev && !opt.instant && ANIM){
+    e.el.style.boxShadow = '-6px 0 18px rgba(0,0,0,.08)';
+    anim(prev.el, 'translateX(0)', 'translateX(-30%)');
+    anim(e.el, 'translateX(100%)', 'translateX(0)').then(() => { e.el.style.boxShadow = ''; if (top() === e) prev.el.style.display = 'none'; });
+  } else if (prev) prev.el.style.display = 'none';
+  notify();
+  return e;
+}
+function pop(opt = {}){
+  const s = tabs[cur]; if (s.length < 2) return;
+  const e = s.pop(), prev = top();
+  prev.el.style.display = ''; render(prev);
+  closeFabMenus(); closeLayer('sov');
+  if (!opt.instant && ANIM){
+    anim(prev.el, 'translateX(-30%)', 'translateX(0)');
+    anim(e.el, 'translateX(0)', 'translateX(100%)').then(() => e.el.remove());
+  } else e.el.remove();
+  notify();
+}
+function showTab(i){
+  cur = i;
+  [0, 1, 2].forEach(k => $('#tab' + k).classList.toggle('on', k === i));
+  drawNav();
+}
+function switchTab(i){
+  closeLayer('sov'); closeFabMenus();
+  if (i === cur){ // 같은 탭 다시 누르면 루트까지 pop
+    while (tabs[cur].length > 1) tabs[cur].pop().el.remove();
+    const r = top(); r.el.style.display = ''; render(r);
+  } else { showTab(i); const t = top(); t.el.style.display = ''; render(t); }
+  drawNav(); notify();
+}
+function resetStacks(){
+  closeLayer('sov'); closeLayer('rov'); $('#snack').innerHTML = '';
+  [0, 1, 2].forEach(k => { tabs[k].forEach(e => e.el.remove()); tabs[k] = []; });
+  [0, 1, 2].forEach(k => { const e = mk(ROOTS[k]); tabs[k].push(e); render(e); $('#tab' + k).appendChild(e.el); });
+  showTab(0);
+}
+function drawNav(){
+  const items = [['home', '홈'], ['fav', '유니시그널'], ['chat', '채팅']];
+  $('#nav').innerHTML = items.map(([n, l], i) => `<button class="it" style="left:${i * 130}px" data-act="tab" data-arg="${i}" aria-label="${l}">
+     ${sy(cur === i ? n + '_f' : n, 24, cur === i ? '#000' : 'rgba(0,0,0,.54)')}</button>`).join('') + '<div class="hi"></div>';
+}
+let lastSent = '';
+function notify(){
+  const e = top(); if (!e) return;
+  const id = MAIN_ID[e.id] || e.id;
+  document.body.style.background = SC[e.id].bg ? SC[e.id].bg(e.p) : '#fff';
+  const key = id + '|' + e.id;
+  if (key === lastSent) return; lastSent = key;
+  try { if (parent && parent !== window) parent.postMessage({type: 'demo:screen', app: 'uniway', screen: id, detail: e.id}, '*'); } catch (_) {}
+}
+/* 외부/URL 에서 특정 화면으로 이동 */
+function goto(id){
+  resetStacks(); lastSent = '';
+  const path = {
+    home: [0, []], carpool: [0, ['carpool']], connect: [0, ['connect']], market: [0, ['market']], board: [0, ['board']],
+    lab: [0, ['lab']], calendar: [0, ['calendar']], support: [0, ['support']], profile: [0, ['profile']],
+    'board-detail': [0, ['board', ['boardDetail', {id: 'b3'}]]], 'market-detail': [0, ['market', ['marketDetail', {id: 'i1'}]]],
+    signal: [1, []], chat: [2, []], chatroom: [2, S.chats.length ? [['room', {id: (S.chats.find(c => c.id === 'k3') || S.chats[0]).id}]] : []]
+  }[id] || [0, []];
+  showTab(path[0]);
+  path[1].forEach(x => Array.isArray(x) ? push(x[0], x[1], {instant: true}) : push(x, {}, {instant: true}));
+  if (id === 'chatroom' && top().id === 'room'){ const r = S.chats.find(c => c.id === top().p.id); if (r) r.unread = 0; }
+  drawNav(); notify();
+}
+
+/* =========================================================
+   5. 오버레이: 다이얼로그 / 시트 / 드로어 / 스낵바
+   ========================================================= */
+function layer(where, html, kind, onClose){
+  const host = $('#' + where);
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'position:absolute;inset:0;pointer-events:auto';
+  wrap.innerHTML = `<div class="barrier" data-act="closeLayer" data-arg="${where}"></div>${html}`;
+  wrap._onClose = onClose;
+  host.appendChild(wrap);
+  const box = wrap.lastElementChild;
+  if (ANIM){
+    wrap.firstElementChild.animate([{opacity: 0}, {opacity: 1}], {duration: 180});
+    if (kind === 'dialog') box.animate([{opacity: 0, transform: 'translateY(-50%) scale(.92)'}, {opacity: 1, transform: 'translateY(-50%) scale(1)'}], {duration: 180, easing: EASE});
+    if (kind === 'sheet') box.animate([{transform: 'translateY(100%)'}, {transform: 'translateY(0)'}], {duration: 250, easing: EASE});
+    if (kind === 'drawer') box.animate([{transform: 'translateX(100%)'}, {transform: 'translateX(0)'}], {duration: 250, easing: EASE});
+  }
+  return box;
+}
+function closeLayer(where){
+  const host = $('#' + where); if (!host) return;
+  Array.from(host.children).forEach(w => { if (w._onClose) w._onClose(); w.remove(); });
+}
+const dialog = html => layer('rov', `<div class="dlg" role="dialog">${html}</div>`, 'dialog');
+const sheet = (html, onClose) => layer('sov', `<div class="sheet" role="dialog">${html}</div>`, 'sheet', onClose);
+let snackT = 0;
+function snack(msg, err){
+  const fab = top() && SC[top().id].fab;
+  const box = $('#snack'); box.style.bottom = (90 + 16 + (fab ? 72 : 0)) + 'px';
+  box.innerHTML = `<div class="snk" style="background:${err ? '#E53935' : '#73BEFF'}">${esc(msg)}</div>`;
+  if (ANIM) box.firstChild.animate([{opacity: 0, transform: 'translateY(8px)'}, {opacity: 1, transform: 'none'}], {duration: 200});
+  clearTimeout(snackT); snackT = setTimeout(() => { box.innerHTML = ''; }, STATIC ? 60000 : 2000);
+}
+function closeFabMenus(){
+  $$('[data-fabmenu]').forEach(x => x.remove());
+  tabs.forEach(s => s.forEach(e => { if (e.p.fabOpen){ e.p.fabOpen = false; const f = $('.fab', e.el); if (f) f.classList.remove('open'); } }));
+}
+function fabMenu(opts){
+  const e = top(); e.p.fabOpen = true; $('.fab', e.el).classList.add('open');
+  const m = document.createElement('div'); m.dataset.fabmenu = '1';
+  m.style.cssText = 'position:absolute;inset:0;z-index:5';
+  m.innerHTML = `<div data-act="fabClose" style="position:absolute;inset:0"></div><div class="col" style="position:absolute;right:16px;bottom:88px;align-items:flex-end;gap:12px">
+    ${opts.map(([icn, col, label, act, arg]) => `<div data-act="${act}" data-arg="${arg}" class="row" style="padding:12px 16px;border-radius:25px;background:#fff;box-shadow:0 2px 8px 1px rgba(158,158,158,.3)">
+      ${ic(icn, 20, col)}<span style="width:8px"></span><span style="font-size:16px;white-space:pre">${label}</span></div>`).join('')}</div>`;
+  e.el.appendChild(m);
+  if (ANIM) m.lastElementChild.animate([{opacity: 0, transform: 'scale(.6)', transformOrigin: 'bottom right'}, {opacity: 1, transform: 'scale(1)', transformOrigin: 'bottom right'}], {duration: 250, easing: EASE});
+}
+
+/* 상세 다이얼로그: 카풀 */
+function carDialog(c){
+  const joined = c.joined;
+  dialog(`<div class="row">${circ(50)}<span style="width:12px"></span><span class="w7 ell sp" style="font-size:16px">${esc(c.author)}</span></div>
+    <div style="height:12px"></div>
+    <div class="w7" style="font-size:20px;color:#757575">${esc(c.title)}</div>
+    <div style="height:10px"></div><div class="divider"></div><div style="height:10px"></div>
+    <div class="row" style="align-items:flex-start">
+      <div class="col" style="align-items:center"><div style="height:3px"></div><div style="width:12px;height:12px;border-radius:50%;background:#73BEFF"></div><div style="width:2px;height:50px;background:#E0E0E0"></div>${ic('pin', 16, '#73BEFF')}</div>
+      <span style="width:15px"></span>
+      <div class="sp"><div style="font-size:12px;color:#757575">출발지</div><div style="height:4px"></div><div class="w7" style="font-size:16px;color:var(--b87)">${esc(c.from)}</div>
+        <div style="height:20px"></div><div style="font-size:12px;color:#757575">도착지</div><div style="height:4px"></div><div class="w7" style="font-size:16px;color:var(--b87)">${esc(c.to)}</div></div>
+    </div>
+    <div style="height:10px"></div><div class="divider"></div><div style="height:10px"></div>
+    <div style="font-size:12px;color:#757575">출발 시간</div><div style="height:4px"></div><div class="w7" style="font-size:16px">${c.m}월 ${c.d}일 (${dowOf(c.m, c.d)}) ${c.time}</div>
+    <div style="height:16px"></div>
+    <div class="row"><div><div style="font-size:12px;color:#757575">인원 수</div><div style="height:4px"></div><div class="w7" style="font-size:16px">${c.cur}명 / ${c.max}명</div></div><span class="sp"></span>
+      <div style="position:relative;width:${c.cur * 18 + 20}px;height:40px">${Array.from({length: c.cur}, (_, i) => `<div style="position:absolute;right:${i * 18}px;top:2px;border:2px solid #fff;border-radius:50%">${circ(36)}</div>`).join('')}</div></div>
+    <div style="height:24px"></div>
+    <button class="tbtn" data-act="carJoin" data-arg="${c.id}" ${joined ? 'disabled' : ''}>${joined ? '이미 참여한 게시글입니다.' : '참여 신청'}</button>`);
+}
+/* 상세 다이얼로그: 유니커넥트 */
+function connectDialog(p){
+  p.views++;
+  const n = Math.min(p.cur, 7);
+  dialog(`<div class="row">${circ(50)}<span style="width:12px"></span><div class="col" style="align-items:flex-start"><span class="w7" style="font-size:16px">${esc(p.author)}</span><div style="height:4px"></div><span class="chip">${esc(p.sub)}</span></div></div>
+    <div style="height:16px"></div>
+    <div class="w7" style="font-size:18px">${esc(p.title)}</div>
+    <div style="height:12px"></div>
+    <div style="font-size:14px;line-height:1.4;max-height:117.6px;overflow:auto">${esc(p.content)}</div>
+    <div style="height:16px"></div><div class="divider" style="--dv:#9E9E9E"></div><div style="height:16px"></div>
+    <div style="font-size:12px;color:#757575">총 인원 수</div><div style="height:4px"></div><div style="font-size:14px">${p.cur}명 / ${p.max}명</div>
+    <div style="height:16px"></div>
+    <div class="row"><div style="position:relative;width:${n * 22 + 20}px;height:40px;flex:0 0 auto">${Array.from({length: n}, (_, i) => `<div style="position:absolute;right:${i * 22}px;top:0">${circ(40)}</div>`).join('')}</div>
+      <span style="width:8px"></span><span class="w7" style="font-size:14px">방장 외 ${p.cur - 1}명</span></div>
+    <div style="height:16px"></div>
+    <button class="tbtn" data-act="ucJoin" data-arg="${p.id}" ${p.joined ? 'disabled' : ''}>${p.joined ? '이미 참여한 게시글입니다.' : '참여 신청'}</button>`);
+}
+/* 채팅방 생성 + 채팅 탭으로 이동 (navigateToChatRoom) */
+function joinRoom(type, title, src, first){
+  let room = S.chats.find(c => c.src === src);
+  if (!room){
+    room = {id: 'k' + Date.now(), type, title, n: 2, ago: '방금 전', unread: 0, src, msgs: first ? [first] : []};
+    S.chats.unshift(room);
+  }
+  closeLayer('rov');
+  const chatTab = tabs[2];
+  while (chatTab.length > 1) chatTab.pop().el.remove();
+  showTab(2);
+  const r = top(); r.el.style.display = ''; render(r);
+  push('room', {id: room.id});
+  return room;
+}
+
+/* =========================================================
+   6. 액션
+   ========================================================= */
+const ACT = {
+  tab: a => switchTab(+a),
+  back: () => pop(),
+  push: a => { const [id, arg] = a.split(':'); if (id === 'labList') push('labList', {dep: arg}); else push(id); },
+  pushConnect: a => push('connect', {ut: +a}),
+  closeLayer: a => closeLayer(a),
+  fabClose: () => closeFabMenus(),
+  /* 카풀 */
+  carDate: a => { const p = top().p; p.date = p.date === +a ? null : +a; refresh(); },
+  carDetail: a => carDialog(S.carpool.find(c => c.id === a)),
+  carJoin: a => {
+    const c = S.carpool.find(x => x.id === a); if (!c || c.joined) return;
+    c.cur++; c.joined = true;
+    const tab0 = tabs[0]; tab0.forEach(e => { if (e.id === 'carpool') render(e); });
+    joinRoom('carpool', c.title, c.id, [c.author, `안녕하세요! ${c.m}월 ${c.d}일 ${c.time}에 ${c.from}에서 출발해요`, '오전 09:38']);
+    snack('참여 신청이 완료되었습니다!');
+  },
+  carSearch: () => { const p = top().p; p.searching = true; refresh(); const i = $('input', top().el); i && i.focus(); },
+  carSearchClose: () => { const p = top().p; p.searching = false; p.q = ''; refresh(); },
+  /* 유니커넥트 */
+  ucTab: a => { const p = top().p; p.ut = +a; refresh(); },
+  ucCat: a => { const p = top().p; p.idx = +a; p.child = null; refresh(); },
+  ucFilter: () => {
+    const p = top().p;
+    const ICON = {'즐기기':['mood','rgba(0,0,0,.87)'], '구해요':['group','rgba(0,0,0,.87)'], '운동':['soccer','rgba(0,0,0,.87)'], '기타':['more_h','#757575']};
+    sheet(`<div class="handle"></div>${Object.keys(PARENT).map((k, i) => `${i ? '<div style="height:28px"></div>' : ''}<div style="padding:0 20px">
+      <div class="row">${ic(ICON[k][0], 20, ICON[k][1])}<span style="width:8px"></span><span class="w7" style="font-size:16px;color:var(--b87)">${k}</span></div>
+      <div style="height:12px"></div><div class="row" style="flex-wrap:wrap;gap:8px">${PARENT[k].map(t => `<div class="tag ${p.child === t ? 'on' : ''}" data-act="ucChild" data-arg="${t}">${t}</div>`).join('')}</div></div>`).join('')}<div style="height:30px"></div>`);
+  },
+  ucChild: a => { const p = top().p; p.child = a; p.idx = 0; closeLayer('sov'); refresh(); },
+  connectDetail: a => connectDialog(S.connect.find(c => c.id === a)),
+  ucJoin: a => {
+    const c = S.connect.find(x => x.id === a); if (!c || c.joined) return;
+    c.cur++; c.joined = true;
+    joinRoom('connect', c.title, c.id, [c.author, '반가워요! 참여해 주셔서 감사합니다 😊', '오전 09:38']);
+  },
+  ucFab: () => {
+    if (top().p.fabOpen) return closeFabMenus();
+    fabMenu([['school', '#2196F3', ' 학부생  ', 'ucWrite', '0'], ['school', '#FF9800', '대학원생', 'ucWrite', '1']]);
+  },
+  ucWrite: a => { closeFabMenus(); push('connectWrite', {ut: +a}); },
+  uwSet: a => { const [k, v] = a.split(':'); const f = top().p.f; f[k] = f[k] === v ? '' : v; refresh(); },
+  uwSubmit: () => {
+    const p = top().p, f = p.f, max = parseInt(f.max, 10);
+    if (!f.title.trim()) return snack('제목을 입력해주세요!', true);
+    if (!f.content.trim()) return snack('내용을 입력해주세요!', true);
+    if (!f.max) return snack('총 인원을 입력해주세요!', true);
+    if (!(max >= 2 && max <= 100)) return snack('총 인원 수는 2~100명입니다.', true);
+    const post = {id: 'n' + Date.now(), ut: p.ut, sub: f.sub || '기타', title: f.title.trim(), content: f.content.trim(), cur: 1, max, ago: '방금 전', views: 0, author: ME, joined: true};
+    S.connect.unshift(post); S.mine.unshift({kind: 'connect', badge: '커넥트', color: '#2196F3', text: post.title});
+    pop(); const e = top(); if (e.id === 'connect'){ e.p.ut = p.ut; e.p.idx = 0; e.p.child = null; render(e); }
+    snack('모임이 성공적으로 개설되었습니다!');
+  },
+  /* 카풀 글쓰기 */
+  cwSet: a => { const i = a.indexOf(':'), k = a.slice(0, i), v = a.slice(i + 1); const f = top().p.f; f[k] = (k === 'd' || k === 'max') ? +v : v; refresh(); },
+  cwSubmit: () => {
+    const f = top().p.f;
+    if (!f.from) return snack('출발지를 입력해주세요!', true);
+    if (!f.to) return snack('도착지를 입력해주세요!', true);
+    if (!f.d) return snack('출발 날짜를 선택해주세요!', true);
+    if (!f.time) return snack('출발 시간을 입력해주세요!', true);
+    const post = {id: 'n' + Date.now(), m: 8, d: f.d, time: f.time, from: f.from, to: f.to, cur: 1, max: f.max, title: f.title.trim() || `${f.from} → ${f.to}`, author: ME, joined: true};
+    S.carpool.unshift(post); S.mine.unshift({kind: 'carpool', badge: '카풀', color: '#4CAF50', text: post.title});
+    pop(); const e = top(); if (e.id === 'carpool'){ e.p.date = null; e.p.q = ''; render(e); const s = $('.scroll', e.el); if (s) s.scrollTop = 0; }
+    snack('카풀이 성공적으로 개설되었습니다!');
+  },
+  /* 중고 거래 */
+  mkCat: a => { const p = top().p; p.cat = a; refresh(); },
+  mkSearch: () => { const p = top().p; p.searching = true; refresh(); const i = $('input', top().el); i && i.focus(); },
+  mkSearchClose: () => { const p = top().p; p.searching = false; p.q = ''; refresh(); },
+  mkDetail: a => push('marketDetail', {id: a}),
+  mkChat: a => {
+    const [k, x] = findMarket(a); if (!x) return;
+    joinRoom(k, x.title, x.id, null);
+  },
+  mkFab: () => {
+    if (top().p.fabOpen) return closeFabMenus();
+    fabMenu([['bagf', '#2196F3', ' 상품  ', 'mkWrite', 'item'], ['school', '#4CAF50', ' 과외  ', 'mkWrite', 'tutor'], ['homef', '#FF9800', '자취방', 'mkWrite', 'room']]);
+  },
+  mkWrite: a => { closeFabMenus(); push('marketWrite', {k: a}); },
+  mwSubmit: () => {
+    const p = top().p, f = p.f, k = p.k, t = (f.title || '').trim();
+    const need = {item: [['title','제목을 입력해주세요!'],['price','가격을 입력해주세요!'],['loc','거래 장소를 입력해주세요'],['desc','상품 설명을 입력해주세요!']],
+      tutor: [['title','제목을 입력해주세요'],['subject','과목을 입력해주세요'],['pay','시급을 입력해주세요'],['days','주당 수업 일수를 입력해주세요'],['hours','시간 또는 분을 입력해주세요'],['loc','장소를 입력해주세요'],['desc','상세 설명을 입력해주세요']],
+      room: [['title','제목을 입력해주세요!'],['dep','보증금을 입력해주세요!'],['rent','월세를 입력해주세요!'],['loc','장소를 입력해주세요!'],['desc','자취방 설명을 입력해주세요!']]}[k];
+    for (const [key, msg] of need) if (!String(f[key] || '').trim()) return snack(msg, true);
+    const id = 'n' + Date.now();
+    const post = k === 'item' ? {id, title: t, loc: f.loc, price: +f.price || 0, ago: '방금 전', th: 'box', desc: f.desc}
+      : k === 'tutor' ? {id, title: t, subject: f.subject, pay: +f.pay || 0, days: +f.days || 1, hours: f.hours + '시간', loc: f.loc, ago: '방금 전', desc: f.desc}
+      : {id, title: t, loc: f.loc, dep: +f.dep || 0, rent: +f.rent || 0, ago: '방금 전', th: 'room', desc: f.desc};
+    S.market[k].unshift(post); S.mine.unshift({kind: 'market', badge: '중고', color: '#FF9800', text: t});
+    pop(); const e = top(); if (e.id === 'market'){ e.p.cat = k; render(e); }
+    snack(MKW[k].ok);
+  },
+  /* 대나무숲 */
+  bdRequest: () => {
+    const p = top().p, t = (p.draft || '').trim(); if (!t) return;
+    S.mine.unshift({kind: 'board', badge: '잔디', color: '#4CAF50', text: t});
+    p.draft = ''; refresh();
+    snack('요청이 전송되었습니다! 관리자 승인 후 게시됩니다.');
+  },
+  boardDetail: a => { const b = S.board.find(x => x.id === a); if (b) b.views++; push('boardDetail', {id: a}); },
+  bdLike: () => { const b = S.board.find(x => x.id === top().p.id); b.liked = !b.liked; b.likes += b.liked ? 1 : -1; refresh(); },
+  bdCLike: a => { const b = S.board.find(x => x.id === top().p.id), c = b.comments[+a]; c.liked = !c.liked; c.likes += c.liked ? 1 : -1; refresh(); },
+  bdComment: () => {
+    const e = top(), inp = $('input[data-in="bdcomment"]', e.el), t = (inp && inp.value || '').trim(); if (!t) return;
+    S.board.find(x => x.id === e.p.id).comments.push({name: ME, ago: '방금 전', text: t, likes: 0, liked: false});
+    refresh(); const s = $('.scroll', e.el); if (s) s.scrollTop = s.scrollHeight;
+  },
+  /* 학사 일정 / 문의 */
+  calDay: a => { const p = top().p; p.sel = p.sel === +a ? null : +a; refresh(); },
+  spSubmit: () => {
+    const p = top().p;
+    if (!(p.t || '').trim() || !(p.c || '').trim()) return snack('제목과 내용을 입력해주세요!', true);
+    S.support.unshift({title: p.t.trim(), content: p.c.trim(), date: '2025.08.14', done: false});
+    p.t = ''; p.c = ''; refresh();
+    snack('문의가 성공적으로 등록되었습니다! 빠른 시일 내에 답변드리겠습니다.');
+  },
+  /* 채팅 */
+  chatTab: a => { top().p.idx = +a; refresh(); },
+  chatRefresh: () => {
+    const e = top(); if (STATIC) return refresh();
+    e.p.loading = true; render(e);
+    setTimeout(() => { e.p.loading = false; if (top() === e) render(e); }, 500);
+  },
+  openRoom: a => { const c = S.chats.find(x => x.id === a); if (c) c.unread = 0; push('room', {id: a}); },
+  send: () => {
+    const e = top(), inp = $('input[data-in="msg"]', e.el), t = (inp && inp.value || '').trim(); if (!t) return;
+    const c = S.chats.find(x => x.id === e.p.id);
+    c.msgs.push(['me', t, '오전 09:41', String(c.n - 1)]); c.ago = '방금 전';
+    S.chats.splice(S.chats.indexOf(c), 1); S.chats.unshift(c);
+    render(e); const i2 = $('input[data-in="msg"]', e.el); if (i2 && !AUTO.on) i2.focus();
+  },
+  roomDrawer: () => {
+    const c = S.chats.find(x => x.id === top().p.id); if (!c) return;
+    const others = [...new Set(c.msgs.map(m => m[0]).filter(n => n !== 'me'))];
+    const people = [ME, ...others]; while (people.length < c.n) people.push('참여자' + people.length);
+    layer('sov', `<div class="drawer" role="dialog" aria-label="채팅방 정보">
+      <div style="height:47px"></div>
+      <div class="col" style="align-items:center;padding:24px 16px 16px">${circ(80)}<div style="height:12px"></div><div class="w7" style="font-size:18px">${ME}</div></div>
+      <div style="height:1px;background:#EEEEEE"></div>
+      <div style="padding:16px" class="sp nos"><div class="w7" style="font-size:16px">참여자 ${c.n}</div><div style="height:8px"></div>
+        ${people.slice(0, c.n).map((n, i) => `<div class="row" style="padding:8px 0">${circ(40)}<span style="width:12px"></span>
+          ${i === 0 ? '<span style="width:16px;height:16px;border-radius:50%;background:#87CEEB;color:#fff;font-size:12px;display:grid;place-items:center">나</span><span style="width:4px"></span>' : ''}
+          <span style="font-size:16px">${esc(n)}</span></div>`).join('')}</div>
+      <div style="height:1px;background:#EEEEEE"></div>
+      <div class="row" data-act="leaveRoom" style="padding:16px 16px 20px">${ic('exit', 24, '#9E9E9E')}<span style="width:8px"></span><span style="font-size:16px;color:#757575">나가기</span></div>
+    </div>`, 'drawer');
+  },
+  leaveRoom: () => {
+    dialog(`<div class="w7" style="font-size:22px;font-weight:500">채팅방 나가기</div><div style="height:16px"></div>
+      <div style="font-size:14px;color:#49454F">정말로 이 채팅방을 나가시겠습니까?</div><div style="height:24px"></div>
+      <div class="row" style="justify-content:flex-end;gap:8px"><button data-act="closeLayer" data-arg="rov" style="padding:10px 12px;font-size:14px">취소</button>
+      <button data-act="leaveOk" style="padding:10px 12px;font-size:14px;color:#F44336">나가기</button></div>`);
+  },
+  leaveOk: () => {
+    const id = top().p.id; S.chats = S.chats.filter(c => c.id !== id);
+    closeLayer('rov'); closeLayer('sov'); pop(); snack('채팅방에서 나갔습니다');
+  }
+};
+/* 입력 이벤트 (재렌더 없이 상태만 갱신) */
+const INP = {
+  carq: (v, e) => { e.p.q = v.trim(); render(e); const ni = $('input[data-in="carq"]', e.el); if (ni){ ni.focus(); ni.setSelectionRange(ni.value.length, ni.value.length); } },
+  mkq: (v, e) => { e.p.q = v.trim(); render(e); const ni = $('input[data-in="mkq"]', e.el); if (ni){ ni.focus(); ni.setSelectionRange(ni.value.length, ni.value.length); } },
+  bddraft: (v, e) => { e.p.draft = v; const b = $('#bdReq', e.el); if (b) b.style.color = v.trim() ? '#73BEFF' : '#9E9E9E'; },
+  spt: (v, e) => { e.p.t = v; spColor(e); },
+  spc: (v, e) => { e.p.c = v; spColor(e); },
+  msg: () => {}, bdcomment: () => {}
+};
+function spColor(e){ const b = $('#spBtn', e.el); if (b) b.style.color = (e.p.t || '').trim() && (e.p.c || '').trim() ? '#73BEFF' : '#9E9E9E'; }
+
+app.addEventListener('click', ev => {
+  const t = ev.target.closest('[data-act]');
+  if (!t || !app.contains(t) || t.disabled) return;
+  const f = ACT[t.dataset.act];
+  if (f){ ev.preventDefault(); f(t.dataset.arg, t, ev); }
+});
+app.addEventListener('input', ev => {
+  const k = ev.target.dataset && ev.target.dataset.in; if (!k) return;
+  const e = top();
+  if (k.startsWith('f.')){ e.p.f[k.slice(2)] = ev.target.value; return; }
+  if (INP[k]) INP[k](ev.target.value, e);
+});
+app.addEventListener('keydown', ev => {
+  if (ev.key !== 'Enter' || ev.isComposing) return;
+  const a = ev.target.dataset && ev.target.dataset.enter;
+  if (a && ACT[a]){ ev.preventDefault(); ACT[a](); }
+});
+
+/* =========================================================
+   7. 자동 투어 (?autoplay=1)
+   ========================================================= */
+const AUTO = {on: false, tok: 0};
+const STOP = {};
+const wait = (ms, tok) => new Promise((res, rej) => setTimeout(() => (tok === AUTO.tok && AUTO.on ? res() : rej(STOP)), ms));
+function findT(sel){
+  const scopes = [$('#rov'), $('#sov'), top() && top().el, $('#nav')];
+  for (const s of scopes){ if (!s) continue; const el = $(sel, s); if (el) return el; }
+  return null;
+}
+function ripple(el){
+  const r = el.getBoundingClientRect(), a = app.getBoundingClientRect(), k = a.width / 390;
+  const x = (r.left + r.width / 2 - a.left) / k, y = (r.top + r.height / 2 - a.top) / k;
+  const d = document.createElement('div'); d.className = 'tapfx'; d.style.left = x + 'px'; d.style.top = y + 'px';
+  $('#fx').appendChild(d); setTimeout(() => d.remove(), 700);
+}
+async function tap(sel, tok, after = 600){
+  const el = findT(sel); if (!el) throw new Error('tour target missing: ' + sel);
+  const sc = el.closest('.scroll');
+  if (sc){ const r = el.getBoundingClientRect(), s = sc.getBoundingClientRect(); if (r.top < s.top || r.bottom > s.bottom) { sc.scrollTo({top: sc.scrollTop + (r.top - s.top) - 80, behavior: ANIM ? 'smooth' : 'auto'}); await wait(450, tok); } }
+  ripple(el); await wait(220, tok);
+  el.click(); await wait(after, tok);
+}
+async function type(sel, text, tok){
+  const el = findT(sel); if (!el) return;
+  ripple(el); await wait(250, tok);
+  for (let i = 1; i <= text.length; i++){ el.value = text.slice(0, i); el.dispatchEvent(new Event('input', {bubbles: true})); await wait(45, tok); }
+}
+async function scrollBy(px, tok, ms = 900){ const s = $('.scroll', top().el); if (!s) return; s.scrollTo({top: s.scrollTop + px, behavior: ANIM ? 'smooth' : 'auto'}); await wait(ms, tok); }
+async function tour(tok){
+  for (;;){
+    const t0 = performance.now();
+    S = clone(INITIAL); resetStacks(); lastSent = ''; notify();
+    await wait(1300, tok);
+    await scrollBy(330, tok, 900); await scrollBy(-330, tok, 550);
+    await tap('[data-act="push"][data-arg="carpool"]', tok, 1000);          // 홈 → 택시 카풀
+    await tap('[data-act="carDate"][data-arg="15"]', tok, 800);             // 날짜 선택
+    await tap('[data-act="carDetail"]', tok, 1200);                          // 글 열기
+    await tap('[data-act="carJoin"]', tok, 900);                            // 참여 신청 → 채팅방
+    await type('input[data-in="msg"]', '안녕하세요! 저도 울산역 가요 🙌', tok);
+    await tap('[data-act="send"]', tok, 1200);                               // 말풍선 추가
+    await tap('#nav [data-arg="0"]', tok, 600);                              // 홈 탭(카풀 화면 유지)
+    await tap('[data-act="back"]', tok, 700);                                // 홈
+    await tap('[data-act="push"][data-arg="connect"]', tok, 900);           // 유니커넥트
+    await tap('[data-act="ucCat"][data-arg="3"]', tok, 900);                // 운동
+    await tap('[data-act="ucCat"][data-arg="2"]', tok, 900);                // 구해요
+    await tap('[data-act="back"]', tok, 700);
+    await tap('[data-act="push"][data-arg="market"]', tok, 900);            // 중고 거래
+    await tap('[data-act="mkCat"][data-arg="tutor"]', tok, 850);
+    await tap('[data-act="mkCat"][data-arg="room"]', tok, 850);
+    await tap('[data-act="back"]', tok, 700);
+    await tap('[data-act="push"][data-arg="board"]', tok, 900);             // 대나무숲
+    await tap('[data-act="boardDetail"][data-arg="b2"]', tok, 900);
+    await tap('[data-act="bdLike"]', tok, 1100);                             // 좋아요
+    await tap('[data-act="back"]', tok, 600);
+    await tap('[data-act="back"]', tok, 1000);                               // 홈
+    window.__uniwayTour = {loops: ((window.__uniwayTour || {}).loops || 0) + 1, ms: Math.round(performance.now() - t0)};
+  }
+}
+function startAuto(){
+  if (AUTO.on) return;
+  AUTO.on = true; const tok = ++AUTO.tok;
+  tour(tok).catch(err => { if (err !== STOP) console.warn(err); });
+}
+function stopAuto(){ if (!AUTO.on) return; AUTO.on = false; AUTO.tok++; $('#fx').innerHTML = ''; }
+['pointerdown', 'wheel', 'keydown', 'touchstart'].forEach(t => app.addEventListener(t, e => { if (e.isTrusted && AUTO.on) stopAuto(); }, {capture: true, passive: true}));
+
+/* =========================================================
+   8. 호스트 연동 · 스케일 · 시작
+   ========================================================= */
+window.addEventListener('message', ev => {
+  const d = ev.data; if (!d || typeof d !== 'object') return;
+  if (d.type === 'demo:goto' && typeof d.screen === 'string'){ stopAuto(); goto(d.screen); }
+  if (d.type === 'demo:autoplay'){ if (d.on) startAuto(); else stopAuto(); }
+});
+function fit(){
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const s = Math.min(vw / 390, vh / 844);
+  app.style.transform = `translate(${(vw - 390 * s) / 2}px,${(vh - 844 * s) / 2}px) scale(${s})`;
+}
+window.addEventListener('resize', fit);
+fit();
+drawNav();
+goto(QS.get('screen') || 'home');
+if (QS.get('autoplay') === '1') startAuto();
+window.UniwayDemo = {goto, startAuto, stopAuto, state: () => ({autoplay: AUTO.on, tab: cur, screen: top() && top().id})};
+})();
+</script>
+</body>
+</html>

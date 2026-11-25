@@ -1,0 +1,1078 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Smeal 데모</title>
+<!--
+  Smeal interactive demo (HTML/CSS/JS re-creation, mock data, no network).
+  Layout numbers come from the Flutter source (smeal-eatStudy/lib):
+    ScreenUtil designSize 360x690  ->  .w/.sp = x * 390/360,  .h = x * 844/690
+    Material 3 defaults: Text inherits bodyMedium (line-height 1.43, letter-spacing .25px)
+  URL:  ?screen=meal|calendar|timetable|weekly|edit|settings|school|search|first|theme|display|font
+        ?autoplay=1   ?static=1   ?theme=light|dark|system
+  Host messages in:  {type:"demo:goto", screen}  {type:"demo:autoplay", on}
+  Message out:       {type:"demo:screen", app:"smeal", screen}
+-->
+<style>
+@font-face { font-family: "BMJUA"; src: url("assets/fonts/BMJUA.ttf") format("truetype"); font-display: block; }
+@font-face { font-family: "Seoul"; src: url("assets/fonts/SeoulNamsanB.ttf") format("truetype"); font-display: swap; }
+
+/* ---------- theme tokens (main.dart ThemeData + per-widget colors) ---------- */
+:root {
+  --fd: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", Roboto, sans-serif;
+  --ff: "BMJUA", var(--fd);
+  --bg: #fff; --tx: #000; --ic: #000; --card: #EEEEEE; --nav: #fff; --unsel: rgba(0,0,0,.54);
+  --navShadow: 0 0 12px #9E9E9E;
+  --segSel: #000; --segUnselTx: #9E9E9E; --monthHead: #E0E0E0;
+  --ttcell: #fff; --ttperiod: #E0E0E0; --cellbg: #fff;
+  --btn: #E0E0E0; --sheet: #fff; --field: #EEEEEE; --searchbar: #EEEEEE;
+  --sub: #757575; --trail: #49454F; --divider: #CAC4D0; --fieldTx: #1D1B20; --hint: #49454F;
+  --snack: #EEEEEE; --firstTx: #000; --sheetOff: #E0E0E0; --doneOff: #E0E0E0; --doneOffTx: #9E9E9E;
+  --sbfg: #000; --hi: #000;
+}
+:root.dark {
+  --bg: #000; --tx: #E0E0E0; --ic: #E0E0E0; --card: #424242; --nav: #212121; --unsel: rgba(255,255,255,.7);
+  --navShadow: none;
+  --segSel: #616161; --segUnselTx: #212121; --monthHead: #616161;
+  --ttcell: #424242; --ttperiod: #212121; --cellbg: #212121;
+  --btn: #616161; --sheet: #212121; --field: #212121; --searchbar: #424242;
+  --sub: #9E9E9E; --trail: #CAC4D0; --divider: #49454F; --fieldTx: #E6E0E9; --hint: #CAC4D0;
+  --snack: #757575; --firstTx: #EEEEEE; --sheetOff: #9E9E9E; --doneOff: #9E9E9E; --doneOffTx: #E0E0E0;
+  --sbfg: #fff; --hi: #fff;
+}
+:root.font-seoul { --ff: "Seoul", var(--fd); }
+:root.font-default { --ff: var(--fd); }
+
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); }
+body { font-family: var(--fd); -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+#app { position: absolute; left: 0; top: 0; width: 390px; height: 844px; overflow: hidden; transform-origin: 0 0;
+  background: var(--bg); color: var(--tx); user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; }
+input { font: inherit; user-select: text; -webkit-user-select: text; }
+.f { font-family: var(--ff); }
+.fd { font-family: var(--fd); }
+.t { line-height: 1.43; letter-spacing: .25px; }            /* M3 bodyMedium inheritance */
+.b { font-weight: 700; }
+svg.i { display: block; fill: currentColor; flex: none; }
+
+/* FittedBox(scaleDown) */
+.fit { display: flex; justify-content: center; width: 100%; }
+.fit > span { flex: none; display: inline-block; white-space: pre; text-align: center; transform-origin: 50% 0; }
+
+/* ---------- layers / route transitions ---------- */
+.layer { position: absolute; inset: 0; background: var(--bg); display: flex; flex-direction: column; overflow: hidden;
+  transition: transform .25s cubic-bezier(.2,.8,.2,1); will-change: transform; }
+.layer.under { transform: translateX(-30%); }
+.layer.off { transform: translateX(100%); }
+.layer.offdown { transform: translateY(100%); }
+.layer.fade { transition: transform .25s cubic-bezier(.2,.8,.2,1), opacity .25s; }
+.layer.fade.offdown { opacity: 0; }
+.noanim .layer, .noanim .layer * , .noanim #overlay * { transition: none !important; animation: none !important; }
+
+/* status bar & home indicator */
+#sb { position: absolute; left: 0; top: 0; width: 390px; height: 47px; z-index: 80; pointer-events: none; color: var(--sbfg); }
+#sb .time { position: absolute; left: 28px; width: 54px; top: 14px; text-align: center;
+  font: 600 17px/22px -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; letter-spacing: -.2px; }
+#sb .icons { position: absolute; right: 26px; top: 19px; display: flex; gap: 6px; align-items: center; }
+#sb svg { fill: currentColor; display: block; }
+#hi { position: absolute; left: 128px; bottom: 8px; width: 134px; height: 5px; border-radius: 3px; background: var(--hi); z-index: 80; pointer-events: none; }
+#overlay { position: absolute; inset: 0; z-index: 40; pointer-events: none; }
+#overlay > * { pointer-events: auto; }
+#fx { position: absolute; inset: 0; z-index: 90; pointer-events: none; }
+.tapfx { position: absolute; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%;
+  background: rgba(110,110,110,.38); box-shadow: 0 0 0 2px rgba(255,255,255,.75), 0 1px 6px rgba(0,0,0,.25);
+  animation: tapfx .65s ease-out forwards; }
+@keyframes tapfx { 0% { transform: scale(.35); opacity: 0; } 25% { opacity: 1; } 100% { transform: scale(1.45); opacity: 0; } }
+
+/* ---------- AppBar ---------- */
+.ab { flex: none; padding-top: 47px; background: var(--bg); position: relative; z-index: 2; }
+.tool { height: 56px; position: relative; display: flex; align-items: center; }
+.logo { position: absolute; left: 17.33px; top: 3px; width: 80.17px; height: 53px; } /* leadingWidth .25sw, pad 16.w/3 */
+.logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.acts { margin-left: auto; display: flex; align-items: center; height: 56px; }
+.ib { display: flex; align-items: center; justify-content: center; height: 48px; min-width: 48px; color: var(--ic); }
+.lead { position: absolute; left: 0; top: 0; height: 56px; width: 56px; display: flex; }
+.lead .ib { flex: 1; min-width: 0; height: 56px; }
+.abtitle { position: absolute; left: 56px; right: 56px; top: 0; height: 56px; display: flex; align-items: center; justify-content: center;
+  font-weight: 700; line-height: 1.27; white-space: nowrap; color: var(--tx); }
+.acts-r { position: absolute; right: 0; top: 0; height: 56px; display: flex; align-items: center; }
+
+/* TabBar (timetable) */
+.tabbar { height: 48px; position: relative; display: flex; }
+.tab { flex: 1; height: 46px; display: flex; align-items: center; justify-content: center; font-size: 17.33px; line-height: 1.43;
+  letter-spacing: .1px; font-weight: 500; color: #757575; }
+.tab.on { color: var(--tx); }
+.tabdiv { position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: var(--divider); }
+.tabind { position: absolute; left: 0; bottom: 0; width: 50%; height: 2px; background: var(--tx); transition: transform .25s; }
+
+/* ---------- Home + bottom navigation ---------- */
+.tabbody { flex: 1; position: relative; display: flex; flex-direction: column; min-height: 0; }
+.navwrap { flex: none; height: 85px; box-shadow: var(--navShadow); position: relative; z-index: 3; }
+.nav { height: 85px; background: var(--nav); border-radius: 15px 15px 0 0; display: flex; padding-bottom: 27px; overflow: hidden; }
+.navi { flex: 1; display: flex; flex-direction: column; align-items: center; height: 58px; padding-top: 14px; color: var(--unsel); }
+.navi.on { padding-top: 7px; color: var(--ic); }
+.navi .lbl { font-size: 14px; line-height: 20px; height: 20px; font-weight: 700; letter-spacing: .25px; opacity: 0; }
+.navi.on .lbl { opacity: 1; }
+
+/* ---------- Meal (meal_screen.dart / meal_page.dart) ---------- */
+.mealbody { flex: 1; display: flex; flex-direction: column; position: relative; min-height: 0; }
+.school { flex: none; padding: 0 21.67px; display: flex; flex-direction: column; align-items: center; }
+.school .name { font-size: 34.67px; font-weight: 700; }
+.uline { height: 2px; position: relative; }
+.uline::after { content: ""; position: absolute; left: 0; right: 0; top: 1px; height: 2px; background: var(--tx); }
+.pv { flex: 1; position: relative; overflow: hidden; touch-action: pan-y; min-height: 0; }
+.pvt { position: absolute; top: 0; bottom: 0; left: 0; display: flex; transition: transform .25s cubic-bezier(.2,.8,.2,1); }
+.pg { width: 390px; height: 100%; position: relative; flex: none; display: flex; flex-direction: column; }
+.mcard { margin: 24.46px 43.33px 68.5px; flex: 1; border-radius: 21.67px; background: var(--card); min-height: 0;
+  box-shadow: 0 4px 7px rgba(0,0,0,.22), 0 1px 12px rgba(0,0,0,.10); cursor: pointer; overflow: hidden; }
+:root.dark .mcard { box-shadow: 0 4px 7px rgba(0,0,0,.6); }
+.mscroll { height: 100%; overflow-y: auto; scrollbar-width: none; padding: 19.57px 0; display: flex; flex-direction: column; align-items: center; }
+.mscroll::-webkit-scrollbar { display: none; }
+.mc-title { font-size: 39px; font-weight: 700; white-space: nowrap; }
+.mc-date { font-size: 26px; font-weight: 700; color: #9E9E9E; white-space: nowrap; }
+.mc-item { padding: 4.89px 21.67px; width: 100%; }
+.mc-item .fit > span { font-size: 26px; cursor: pointer; }
+.hl { line-height: 1.43; }
+.hl.on { background: rgba(255,255,0,.6); }
+.mc-msg { padding: 0; }
+.mc-msg > span { font-size: 30.33px; }
+.mc-kcal { font-size: 21.67px; font-weight: 700; white-space: nowrap; }
+.dots { position: absolute; left: 0; right: 0; bottom: 24.46px; display: flex; justify-content: center; pointer-events: none; }
+.dot { width: 10px; height: 10px; margin: 0 4.33px; border-radius: 5px; background: #9E9E9E; transition: width .3s, background-color .3s; }
+.dot.on { width: 25px; background: var(--tx); }
+
+/* ---------- Monthly meal (monthly_meal_screen.dart) ---------- */
+.calbody { flex: 1; display: flex; flex-direction: column; align-items: center; min-height: 0; padding-bottom: 34px; }
+.seg { flex: none; margin: 16.88px 0; height: 33.76px; width: 234px; background: #E0E0E0; border-radius: 10px; display: flex; }
+.seg button { flex: 1; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 13px;
+  font-weight: 700; line-height: 1.43; letter-spacing: .25px; color: var(--segUnselTx); background: #E0E0E0; transition: background-color .2s, color .2s; }
+.seg button.on { background: var(--segSel); color: #fff; }
+.calbody .pv { width: 390px; }
+.ccard { margin: 0 19.5px 42.2px; flex: 1; border-radius: 20px; background: var(--card); min-height: 0; overflow: hidden;
+  box-shadow: 0 4px 7px rgba(0,0,0,.22), 0 1px 12px rgba(0,0,0,.10); }
+:root.dark .ccard { box-shadow: 0 4px 7px rgba(0,0,0,.6); }
+.cscroll { height: 100%; overflow-y: auto; scrollbar-width: none; padding: 12.66px; }
+.cscroll::-webkit-scrollbar { display: none; }
+.ctitle { text-align: center; font-size: 25.35px; font-weight: 700; white-space: nowrap; margin-bottom: 8.44px; }
+.ctable { display: grid; grid-template-columns: repeat(5, 1fr); border-top: 1px solid #000; border-left: 1px solid #000; }
+.ccell { border-right: 1px solid #000; border-bottom: 1px solid #000; display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+.ccell.tap { cursor: pointer; }
+.chead { background: var(--monthHead); text-align: center; font-size: 13.65px; font-weight: 700; line-height: 1.43; letter-spacing: .25px; min-height: 19.5px; }
+.cdiv { height: 1px; position: relative; flex: none; }
+.cdiv::after { content: ""; position: absolute; left: 0; right: 0; top: .2px; height: .6px; background: #000; }
+.cbody { flex: 1; display: flex; flex-direction: column; justify-content: safe center; align-items: center; overflow: hidden; min-height: 0; }
+.cbody span { font-size: 8.58px; line-height: 1.43; letter-spacing: -.78px; max-width: 100%; display: inline-block; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; vertical-align: top; text-align: center; }
+.cbody span.msg { white-space: pre; text-overflow: clip; }
+
+/* ---------- Timetable (timetable_screen / today / weekly / edit) ---------- */
+.ttbody { flex: 1; min-height: 0; }
+.scroll { height: 100%; overflow-y: auto; scrollbar-width: none; }
+.scroll::-webkit-scrollbar { display: none; }
+.today { display: flex; flex-direction: column; align-items: center; padding-top: 12.66px; }
+.today .cls { font-size: 39px; font-weight: 700; letter-spacing: 4px; line-height: 1.43; white-space: nowrap; }
+.today .bar { width: 195px; height: 2px; background: var(--tx); }
+.today .dt { margin-top: 12.66px; font-size: 19.5px; font-weight: 700; letter-spacing: 2px; line-height: 1.43; white-space: nowrap; }
+.tgrid { width: 390px; padding: 16.88px 39px; display: flex; flex-direction: column; gap: 4.22px; }
+.trow { height: 62.4px; padding: 4px; }
+.trow > div { height: 100%; border-radius: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.22), 0 2px 4px rgba(0,0,0,.12); }
+.trow .in { height: 100%; display: flex; border: 1px solid #9E9E9E; border-radius: 10px; background: var(--ttcell); overflow: hidden; }
+.trow .p { flex: 2; background: var(--ttperiod); display: flex; align-items: center; justify-content: center; font-size: 19.5px; }
+.trow .s { flex: 5; display: flex; align-items: center; padding: 0 19.5px; min-width: 0; }
+.trow .s .fit > span { font-size: 19.5px; }
+.wk { display: flex; flex-direction: column; justify-content: safe center; min-height: 100%; padding: 16.88px 7.8px; }
+.wgrid { display: grid; grid-template-columns: max-content 7.8px repeat(5, 1fr); }
+.wh { text-align: center; padding-bottom: 10px; line-height: 1.03; white-space: nowrap; align-self: end; }
+.wh .d { font-size: 19.5px; font-weight: 700; }
+.wh .n { font-size: 15.6px; font-weight: 700; }
+.wh0 { font-size: 14px; font-weight: 700; color: transparent; padding-bottom: 10px; line-height: 1.43; align-self: end; }
+.wn { display: flex; align-items: center; justify-content: center; font-size: 13.65px; font-weight: 700; line-height: 1.43; }
+.wc { aspect-ratio: 1; border-right: 1px solid #9E9E9E; border-bottom: 1px solid #9E9E9E; background: var(--cellbg);
+  display: flex; align-items: center; justify-content: center; padding: 8.44px 3.9px; min-width: 0; }
+.wc.top { border-top: 1px solid #9E9E9E; }
+.wc.left { border-left: 1px solid #9E9E9E; }
+.wc span { font-size: 11.7px; font-weight: 600; line-height: 1.43; letter-spacing: .25px; text-align: center; overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: keep-all; overflow-wrap: anywhere; }
+.wc.mod span { color: #2196F3; }
+.wc.tap { cursor: pointer; }
+.pm { display: flex; justify-content: center; margin-top: 20px; gap: 20px; }
+.pm .ib { color: #9E9E9E; }
+.pm .ib.en { color: #2196F3; }
+
+/* ---------- Settings ---------- */
+.sett-title { position: absolute; left: 32.5px; top: 52px; font-size: 24.46px; font-weight: 700; line-height: 1.43; letter-spacing: .25px; }
+.lt { display: flex; align-items: center; min-height: 56px; padding: 0 24px 0 16px; width: 100%; text-align: left; }
+.lt .lead-ic { width: 24px; margin-right: 16px; color: var(--ic); display: flex; justify-content: center; }
+.lt .ttl { flex: 1; line-height: 1.5; letter-spacing: .5px; color: var(--tx); }
+.lt .trl { display: flex; align-items: center; }
+
+/* school info / search */
+.form { flex: 1; display: flex; flex-direction: column; padding: 10.83px 10.83px 44.83px; min-height: 0; }
+.flabel { font-size: 16px; font-weight: 700; line-height: 1.43; letter-spacing: .25px; }
+.field { height: 56px; border-radius: 10px; background: var(--field); display: flex; align-items: center; padding: 0 12px;
+  font-size: 16px; line-height: 1.5; letter-spacing: .5px; color: var(--fieldTx); width: 100%; border: 0; outline: none; }
+.field.ro { cursor: pointer; color: var(--tx); }
+.notice { padding: 0 8.67px; }
+.notice .fit { justify-content: flex-start; }
+.notice .fit > span { font-size: 17.33px; line-height: 1.5; letter-spacing: .25px; text-align: left; transform-origin: 0 0; }
+.notice em { font-style: normal; color: #FF4081; font-weight: 700; }
+.done { height: 45px; width: 100%; border-radius: 10px; margin-top: 19.57px; font-size: 14px; line-height: 1.43; letter-spacing: .1px;
+  background: var(--doneOff); color: var(--doneOffTx); box-shadow: none; }
+.done.en { background: #2196F3; color: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+.sbar { margin: 24.46px 21.67px 0; height: 50px; border-radius: 25px; background: var(--searchbar); display: flex; align-items: center; }
+.sbar input { flex: 1; min-width: 0; height: 48px; border: 0; outline: none; background: transparent; font-size: 16px; letter-spacing: .5px;
+  color: var(--fieldTx); margin-left: 10px; caret-color: #2196F3; }
+.sbar input::placeholder { color: var(--tx); opacity: 1; }
+.sres { flex: 1; min-height: 0; margin: 0 21.67px; }
+.sres .empty { height: 100%; display: flex; align-items: center; justify-content: center; font-size: 17.33px; line-height: 1.43; letter-spacing: .25px; }
+.sitem { display: block; width: 100%; text-align: left; padding: 8px 24px 8px 16px; }
+.sitem .nm { font-size: 16px; color: var(--tx); }
+.sitem .nm b { font-weight: 400; color: #2196F3; }
+.sitem .ad { font-size: 14px; line-height: 1.43; letter-spacing: .25px; color: var(--sub); }
+
+/* ---------- overlays: dialog, sheet, snackbar, spinner ---------- */
+.barrier { position: absolute; inset: 0; background: rgba(0,0,0,.54); animation: fadein .15s ease-out; }
+@keyframes fadein { from { opacity: 0; } }
+.dlgwrap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 24px 40px; pointer-events: none; }
+.dlg { pointer-events: auto; width: max-content; min-width: 280px; max-width: 310px; border-radius: 28px; padding: 24px 24px 24px;
+  box-shadow: 0 3px 5px -1px rgba(0,0,0,.2), 0 6px 10px rgba(0,0,0,.14), 0 1px 18px rgba(0,0,0,.12); animation: dlgin .18s ease-out; color: var(--tx); }
+@keyframes dlgin { from { opacity: 0; transform: scale(.92); } }
+.dlg .dt { text-align: center; font-size: 24px; line-height: 1.33; }
+.dlg .dc { padding-top: 16px; text-align: center; font-size: 14px; white-space: pre-line; }
+.dlg .acts2 { display: flex; justify-content: flex-end; padding-top: 24px; }
+.ebtn { height: 40px; padding: 0 24px; border-radius: 20px; background: var(--btn); font-size: 14px; font-weight: 700; line-height: 1.43;
+  letter-spacing: .1px; box-shadow: 0 1px 2px rgba(0,0,0,.3), 0 1px 3px 1px rgba(0,0,0,.15); }
+.pop .dt .fit > span { font-size: 19.5px; line-height: 1.43; letter-spacing: .25px; }
+.pop .uline2 { width: 175.5px; height: 2px; background: var(--tx); margin: 0 auto; }
+.pop .items { padding-top: 16px; display: flex; flex-direction: column; align-items: center; }
+.pop .items .fit > span { font-size: 15.6px; line-height: 1.7; cursor: pointer; }
+.pop .kc { font-size: 15.6px; line-height: 1.43; letter-spacing: .25px; text-align: center; white-space: pre; }
+/* padding-bottom 10 + 34 safe area: the demo has no soft keyboard, so keep 저장 clear of the home indicator */
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--sheet); border-radius: 20px 20px 0 0; padding: 16px 16px 44px;
+  animation: sheetin .25s cubic-bezier(.2,.8,.2,1); }
+@keyframes sheetin { from { transform: translateY(100%); } }
+.sheet .st { font-size: 18px; font-weight: 700; line-height: 1.43; letter-spacing: .25px; }
+.sheet input { display: block; width: 100%; margin-top: 10px; height: 44px; border-radius: 10px; border: 1px solid #BDBDBD; outline: none;
+  padding: 0 12px; background: transparent; color: var(--fieldTx); font-size: 16px; letter-spacing: .5px; caret-color: #2196F3; }
+.sheet input:focus { border: 2px solid #2196F3; padding: 0 11px; }
+.sheet input::placeholder { color: var(--hint); }
+.sheet .save { display: block; width: 100%; height: 45px; margin-top: 20px; border-radius: 10px; background: var(--sheetOff);
+  font-size: 14px; line-height: 1.43; letter-spacing: .1px; color: var(--tx); }
+.sheet .save.en { background: #2196F3; box-shadow: 0 1px 2px rgba(0,0,0,.3), 0 1px 3px 1px rgba(0,0,0,.15); }
+.snack { position: absolute; left: 16px; right: 16px; bottom: 50px; border-radius: 10px; background: var(--snack); padding: 14px 16px;
+  text-align: center; font-size: 17.33px; line-height: 1.43; letter-spacing: .25px; color: var(--tx);
+  box-shadow: 0 3px 5px rgba(0,0,0,.2), 0 1px 10px rgba(0,0,0,.12); animation: fadein .2s; }
+.busy { position: absolute; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; }
+.spin { width: 36px; height: 36px; animation: rot 1.1s linear infinite; color: var(--tx); }
+.spin circle { fill: none; stroke: currentColor; stroke-width: 4; stroke-linecap: butt; stroke-dasharray: 60 200; animation: dash 1.4s ease-in-out infinite; }
+@keyframes rot { to { transform: rotate(360deg); } }
+@keyframes dash { 0% { stroke-dasharray: 1 200; stroke-dashoffset: 0; } 50% { stroke-dasharray: 70 200; stroke-dashoffset: -15; } 100% { stroke-dasharray: 70 200; stroke-dashoffset: -95; } }
+.loading { position: absolute; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 5; }
+.loading .tx { font-size: 16.25px; line-height: 1.43; letter-spacing: .25px; }
+@media (prefers-reduced-motion: reduce) { .layer, .layer *, #overlay * { transition: none !important; animation-duration: 0s !important; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="layers"></div>
+  <div id="overlay"></div>
+  <div id="sb">
+    <div class="time">9:41</div>
+    <div class="icons">
+      <svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="7.6" width="3.1" height="4.4" rx="1"/><rect x="4.9" y="5.2" width="3.1" height="6.8" rx="1"/><rect x="9.8" y="2.7" width="3.1" height="9.3" rx="1"/><rect x="14.7" y="0" width="3.1" height="12" rx="1"/></svg>
+      <svg width="16" height="12" viewBox="0 0 16 12"><path d="M8 2.3c2.4 0 4.6.9 6.2 2.5L15.4 3.6C13.5 1.7 10.9.6 8 .6S2.5 1.7.6 3.6l1.2 1.2C3.4 3.2 5.6 2.3 8 2.3zm0 3.5c1.4 0 2.7.5 3.7 1.5l1.2-1.2C11.6 4.8 9.9 4.1 8 4.1s-3.6.7-4.9 2l1.2 1.2c1-1 2.3-1.5 3.7-1.5zM8 9.2c-.6 0-1.1.2-1.5.6L8 11.4l1.5-1.6c-.4-.4-.9-.6-1.5-.6z"/></svg>
+      <svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="22.5" height="12" rx="3.6" fill="none" stroke="currentColor" opacity=".38"/><rect x="2.2" y="2.2" width="19.1" height="8.6" rx="2.2"/><path d="M24.4 4.4v4.2c.9-.3 1.5-1.1 1.5-2.1s-.6-1.8-1.5-2.1z" opacity=".4"/></svg>
+    </div>
+  </div>
+  <div id="hi"></div>
+  <div id="fx"></div>
+</div>
+<script>
+(() => {
+'use strict';
+
+/* =====================================================================
+   0. Constants, params
+   ===================================================================== */
+const W = 390, H = 844, SH = H / 690;            // ScreenUtil .h factor
+const Q = new URLSearchParams(location.search);
+const STATIC = Q.get('static') === '1';
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const ANIM = !STATIC && !REDUCED;
+const root = document.documentElement;
+const app = document.getElementById('app');
+const layersEl = document.getElementById('layers');
+const overlayEl = document.getElementById('overlay');
+const fxEl = document.getElementById('fx');
+if (!ANIM) root.classList.add('noanim');
+
+const ICON = {
+  restaurant: 'M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z',
+  schedule: 'M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z',
+  settings: 'M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z',
+  question: 'M11.07 12.85c.77-1.39 2.25-2.21 3.11-3.44.91-1.29.4-3.7-2.18-3.7-1.69 0-2.52 1.28-2.87 2.34L6.54 6.96C7.25 4.83 9.18 3 11.99 3c2.35 0 3.96 1.07 4.78 2.41.7 1.15 1.11 3.3.03 4.9-1.2 1.77-2.35 2.31-2.97 3.45-.25.46-.35.76-.35 2.24h-2.89c-.01-.78-.13-2.05.48-3.15zM14 20c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2z',
+  calendar: 'M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z',
+  edit: 'M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z',
+  chevronLeft: 'M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z',
+  refresh: 'M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z',
+  school: 'M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3 1 9l11 6 9-4.91V17h2V9L12 3z',
+  home: 'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z',
+  palette: 'M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z',
+  arrowFwd: 'M6.23 20.23 8 22l10-10L8 2 6.23 3.77 14.46 12z',
+  check: 'M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z',
+  remove: 'M19 13H5v-2h14v2z',
+  add: 'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z',
+  clear: 'M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z',
+  editCal: 'M5 10h14v2h2V6c0-1.1-.9-2-2-2h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h7v-2H5V10zm17.84 4.28-.71.71-2.12-2.12.71-.71c.39-.39 1.02-.39 1.41 0l.71.71c.39.39.39 1.02 0 1.41zm-3.54-.7 2.12 2.12-5.3 5.3H15v-2.12l5.3-5.3z',
+};
+const ic = (n, s, style = '') => `<svg class="i" width="${s}" height="${s}" viewBox="0 0 24 24" style="${style}"><path d="${ICON[n]}"/></svg>`;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const LABEL = { 'help-meal': '도움말', 'help-cal': '도움말', 'help-tt': '도움말', calendar: '월간 식단표', edit: '시간표 수정',
+  back: '뒤로', refresh: '새로고침', 'clear-search': '지우기', pminus: '교시 줄이기', pplus: '교시 늘리기' };
+const ibtn = (act, icon, size, extra = '') => `<button class="ib" data-act="${act}" aria-label="${LABEL[act] || ''}" ${extra} style="width:${Math.max(48, size + 16)}px">${ic(icon, size)}</button>`;
+
+/* =====================================================================
+   1. Dates
+   ===================================================================== */
+const pad2 = n => String(n).padStart(2, '0');
+const ymd = d => `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}`;
+const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const wd = d => (d.getDay() + 6) % 7 + 1;                 // Dart weekday: Mon=1 .. Sun=7
+const KWD = ['월', '화', '수', '목', '금', '토', '일'];
+const DAYS = ['월', '화', '수', '목', '금'];
+const TODAY = (() => {                                     // real today; weekend -> nearest weekday
+  const n = new Date(), t = new Date(n.getFullYear(), n.getMonth(), n.getDate()), w = wd(t);
+  return w === 6 ? addDays(t, -1) : w === 7 ? addDays(t, 1) : t;
+})();
+const koreanDayShort = d => `${String(d.getFullYear()).slice(2)}.${pad2(d.getMonth() + 1)}.${pad2(d.getDate())} (${KWD[wd(d) - 1]})`; // yy.MM.dd (요일)
+const weekDates = () => { const mon = addDays(TODAY, -(wd(TODAY) - 1)); return DAYS.map((_, i) => addDays(mon, i)); };
+const HOLIDAYS = { '01-01': '새해입니다!', '03-01': '삼일절입니다.', '05-05': '어린이날입니다!', '06-06': '현충일입니다.',
+  '08-15': '광복절입니다!', '10-03': '개천절입니다!', '10-09': '한글날입니다!', '12-25': '성탄절입니다!' };
+const mmdd = d => `${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+
+/* =====================================================================
+   2. Mock data (meals: NEIS-like per date; timetable: one class)
+   ===================================================================== */
+function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function rng(seed) { let a = seed; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const pick = (r, a) => a[Math.floor(r() * a.length)];
+const POOL = {
+  rice: ['찹쌀밥', '친환경현미밥', '귀리밥', '흑미밥', '차조밥', '기장밥', '발아현미밥', '보리밥', '수수밥', '잡곡밥'],
+  bowl: ['새우계란볶음밥', '김치볶음밥', '참치마요덮밥', '소고기카레라이스', '짜장덮밥', '치킨마요덮밥', '비빔밥&약고추장'],
+  soup: ['양송이스프', '해물짬뽕국', '두부된장국', '맑은콩나물국', '쇠고기미역국', '소고기무국', '어묵국', '순두부찌개', '돈육김치찌개',
+    '북어콩나물국', '감자수제비국', '육개장', '부대찌개', '배추된장국', '계란파국', '시금치된장국', '맑은우동국'],
+  main: ['돼지갈비찜', '치킨까스&소스', '제육볶음', '춘천닭갈비', '떡갈비구이', '고등어구이', '탕수육', '안동찜닭', '돈육불고기',
+    '함박스테이크', '깐풍기', '오리훈제구이', '소불고기', '마파두부', '등갈비김치찜', '족발', '양념치킨', '갈릭버거', '쉬림프로제스파게티'],
+  side: ['베이비채소샐러드', '애호박새우젓볶음', '시금치나물', '콩나물무침', '계란말이', '감자채볶음', '멸치볶음', '오이무침', '어묵볶음',
+    '브로콜리&초장', '잡채', '두부조림', '단호박샐러드', '연근조림', '숙주나물', '도토리묵무침', '오징어야채핫바'],
+  kimchi: ['배추김치', '배추김치', '깍두기', '총각김치', '열무김치', '석박지'],
+  dessert: ['요구르트', '우리밀초코칩쿠키', '딸기', '귤', '바나나', '식혜', '망고푸딩', '츄러스', '아이스홍시', '파인애플',
+    '초코우유', '청포도젤리', '블루베리머핀', '팥양갱'],
+  bfRice: ['찹쌀밥', '흑미밥', '누룽지', '야채죽', '토스트&딸기잼', '크로와상'],
+  bfSoup: ['계란국', '북어국', '미소된장국', '콩나물국', '양송이스프', '시리얼&우유'],
+  bfMain: ['계란후라이', '비엔나소시지볶음', '스크램블에그', '미니핫도그', '떡갈비', '김구이'],
+};
+const NOINFO = '급식 정보를\n찾을 수 없어요';
+const TODAY_LUNCH = ['찹쌀밥&참치마요&김가루', '양송이스프', '쉬림프로제스파게티', '버팔로윙&감자튀김', '배추김치', '우리밀초코칩쿠키'];
+const mealCache = {};
+function genMeal(key, t) {
+  const r = rng(hash(key + t));
+  let items, cal;
+  if (t === '조식') { items = [pick(r, POOL.bfRice), pick(r, POOL.bfSoup), pick(r, POOL.bfMain), pick(r, POOL.side), pick(r, POOL.kimchi)]; cal = 560 + r() * 150; }
+  else {
+    items = [r() < .25 ? pick(r, POOL.bowl) : pick(r, POOL.rice), pick(r, POOL.soup), pick(r, POOL.main), pick(r, POOL.side), pick(r, POOL.kimchi)];
+    if (t === '중식' || r() < .5) items.push(pick(r, POOL.dessert));
+    cal = (t === '중식' ? 840 : 760) + r() * 170;
+  }
+  return [[...new Set(items)], `${cal.toFixed(1)} Kcal`, t];
+}
+/* provider-shaped value: [[menu[], 'kcal', '조식'|'중식'|'석식'], ...]  or  [NOINFO, ''] */
+function mealsOf(d) {
+  const k = ymd(d);
+  if (mealCache[k]) return mealCache[k];
+  const w = wd(d);
+  let v;
+  if (w >= 6 || HOLIDAYS[mmdd(d)]) v = [NOINFO, ''];
+  else {
+    v = (w === 5 ? ['조식', '중식'] : ['조식', '중식', '석식']).map(t => genMeal(k, t));
+    if (k === ymd(TODAY)) v[1] = [TODAY_LUNCH.slice(), '997.5 Kcal', '중식'];
+  }
+  return (mealCache[k] = v);
+}
+const hlKey = (d, t, i) => `${ymd(d)}|${t}|${i}`;
+function seedHighlights(includeToday) {
+  const s = new Set();
+  const y = TODAY.getFullYear(), m = TODAY.getMonth();
+  for (let day = 1; day <= 31; day++) {
+    const d = new Date(y, m, day);
+    if (d.getMonth() !== m || +d === +TODAY) continue;
+    const v = mealsOf(d);
+    if (typeof v[0] === 'string') continue;
+    const h = hash('hl' + ymd(d));
+    if (h % 4 === 0) { const lunch = v[1][0]; s.add(hlKey(d, '중식', h % 8 < 4 ? lunch.length - 1 : 2)); }
+    if (h % 7 === 3) s.add(hlKey(d, '조식', 2));
+  }
+  if (includeToday) { s.add(hlKey(TODAY, '중식', 2)); s.add(hlKey(TODAY, '중식', 5)); }
+  return s;
+}
+const BASE_TT = {
+  월: ['자율활동', '통합사회', '체육', '진로와 직업', '한국사', '수학', '영어'],
+  화: ['한국사', '통합사회', '수학', '통합과학', '체육', '국어'],
+  수: ['한문', '음악', '정보', '통합과학', '수학', '국어', '봉사활동'],
+  목: ['한문', '통합과학', '국어', '과학탐구실험', '음악', '영어', '자율활동'],
+  금: ['한국사', '수학', '통합과학', '국어', '영어', '정보', '동아리활동'],
+};
+const SEED_MODS = { '화-3': '수학2' };
+const SCHOOLS = [['범서고등학교', '울산광역시 울주군'], ['천상고등학교', '울산광역시 울주군']]; // the two codes noted in class_provider.dart
+
+/* =====================================================================
+   3. State
+   ===================================================================== */
+const S = {
+  theme: ['light', 'dark', 'system'].includes(Q.get('theme')) ? Q.get('theme') : 'light',
+  font: 'BMJUA',               // '' | 'Seoul' | 'BMJUA'
+  firstScreen: [0, 0],
+  school: '범서고등학교', grade: 1, classNum: 1,
+  tab: 0, routes: [],
+  mealPage: 1, card: [0, 0, 0], calPage: 1, ttTab: 0,
+  hl: seedHighlights(true),
+  tt: null, mods: null, maxPeriod: 7,
+  showGif: ANIM,
+  form: null, search: { q: '', results: [], loading: false },
+};
+function resetTimetable(withSeed) {
+  S.tt = {}; DAYS.forEach(d => { S.tt[d] = {}; BASE_TT[d].forEach((s, i) => { S.tt[d][i + 1] = s; }); });
+  S.mods = new Set();
+  if (withSeed) for (const [k, v] of Object.entries(SEED_MODS)) { const [d, p] = k.split('-'); S.tt[d][p] = v; S.mods.add(k); }
+  S.maxPeriod = Math.max(7, ...DAYS.flatMap(d => Object.keys(S.tt[d]).map(Number)));
+}
+resetTimetable(true);
+function defaultCardIndex(i) {            // meal_page.dart picks by hour; demo always opens on 중식 when present
+  const v = mealsOf(addDays(TODAY, i - 1));
+  if (typeof v[0] === 'string') return 0;
+  const k = v.findIndex(m => m[2] === '중식');
+  return k < 0 ? 0 : k;
+}
+S.card = [0, 1, 2].map(defaultCardIndex);
+
+/* =====================================================================
+   4. Renderers
+   ===================================================================== */
+const logoSrc = () => {
+  const dark = isDark();
+  return S.showGif ? (dark ? 'assets/logo_anim_dark.webp' : 'assets/logo_anim.webp') : (dark ? 'assets/logo_dark.png' : 'assets/logo.png');
+};
+function isDark() { return S.theme === 'dark' || (S.theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches); }
+
+function logoBar(actions, bottom = '') {
+  return `<header class="ab"><div class="tool"><div class="logo"><img src="${logoSrc()}" alt="SMEAL" draggable="false"></div>
+    <div class="acts">${actions}</div></div>${bottom}</header>`;
+}
+/* AppBar(centerTitle) with chevron leading; opts: icon size, title size, title left pad, actions */
+function centerBar(title, { act = 'back', lead = 30 * SH, size = 21.67, padL = 0, actions = '' } = {}) {
+  return `<header class="ab"><div class="tool">
+    <div class="lead" style="padding-left:8.67px"><button class="ib" data-act="${act}" aria-label="뒤로">${ic('chevronLeft', lead)}</button></div>
+    <div class="abtitle f" style="font-size:${size}px;padding-left:${padL}px">${esc(title)}</div>
+    <div class="acts-r">${actions}</div></div></header>`;
+}
+
+/* ---- bottom navigation (home_screen.dart) ---- */
+function navBar() {
+  const it = [['restaurant', '급식'], ['schedule', '시간표'], ['settings', '설정']];
+  return `<div class="navwrap"><nav class="nav">${it.map(([n, l], i) =>
+    `<button class="navi${S.tab === i ? ' on' : ''}" data-act="tab" data-i="${i}" aria-label="${l}">${ic(n, 24)}<span class="lbl f">${l}</span></button>`).join('')}</nav></div>`;
+}
+
+/* ---- meal tab ---- */
+const DAYT = ['어제', '오늘', '내일'];
+function mealMessage(i) {
+  const d = addDays(TODAY, i - 1), hm = HOLIDAYS[mmdd(d)];
+  if (hm) return [hm, ''];
+  if (wd(d) === 6) return ['오늘은 집밥!', ''];
+  if (wd(d) === 7) return ['맛있으면 0 칼로리!', ''];
+  return mealsOf(d);
+}
+function mealCardInner(i) {
+  const d = addDays(TODAY, i - 1), info = mealsOf(d), msg = mealMessage(i), cs = S.card[i];
+  const mt = info[0] !== NOINFO ? info[cs][2] : '급식';
+  let h = `<div class="mc-title f t">${DAYT[i]}의 ${mt}</div><div class="mc-date f t">${koreanDayShort(d)}</div><div style="height:${16 * SH}px;flex:none"></div>`;
+  let kcal;
+  if (typeof msg[0] === 'string') {
+    h += `<div style="height:${70 * SH}px;flex:none"></div><div class="fit mc-msg"><span class="f t">${esc(msg[0])}</span></div>`;
+    kcal = msg[1];
+  } else {
+    const m = msg[cs];
+    m[0].forEach((it, j) => {
+      const on = S.hl.has(hlKey(d, m[2], j));
+      h += `<div class="mc-item"><div class="fit"><span class="f t hl${on ? ' on' : ''}" data-act="hl" data-i="${i}" data-j="${j}">${esc(it)}</span></div></div>`;
+    });
+    kcal = m[1];
+  }
+  return h + `<div style="height:${16 * SH}px;flex:none"></div><div class="mc-kcal f t">${kcal ? esc(kcal) : '&#8203;'}</div>`;
+}
+function mealTab() {
+  const actions = `<div style="padding-right:8.67px">${ibtn('help-meal', 'question', 23 * SH)}</div>
+    <div style="padding-right:17.33px">${ibtn('calendar', 'calendar', 28 * SH)}</div>`;
+  const cards = [0, 1, 2].map(i => `<div class="pg"><div class="mcard" data-act="cycle" data-i="${i}"><div class="mscroll">${mealCardInner(i)}</div></div></div>`).join('');
+  return logoBar(actions) + `<div class="mealbody">
+    <div class="school"><div class="fit"><span class="name f t">${esc(S.school)}</span></div><div class="uline" data-uline></div></div>
+    <div class="pv" data-pager="meal"><div class="pvt" style="width:${3 * W}px;transform:translateX(${-S.mealPage * W}px)">${cards}</div></div>
+    <div class="dots">${[0, 1, 2].map(i => `<div class="dot${S.mealPage === i ? ' on' : ''}"></div>`).join('')}</div></div>`;
+}
+
+/* ---- monthly meal ---- */
+let RAW_LH = 10;  // TextPainter height of "샘플" at 0.022*sw (measured at init)
+function weekdayCells(y, m) {
+  const first = new Date(y, m, 1), pos = wd(first) >= 6 ? 0 : wd(first) - 1, cells = Array(25).fill(0);
+  let k = pos;
+  for (let day = 1; day <= new Date(y, m + 1, 0).getDate(); day++) {
+    const d = new Date(y, m, day);
+    if (wd(d) <= 5 && k < 25) cells[k++] = day;
+  }
+  return cells;
+}
+function mealInfoFor(v, idx) {          // MonthlyMealScreen.getMealInfo
+  if (typeof v[0] === 'string') return v;
+  const t = ['조식', '중식', '석식'][idx];
+  return v.find(m => m[2] === t) || [NOINFO];
+}
+function calCard(mt) {
+  const y = TODAY.getFullYear(), m = TODAY.getMonth(), cells = weekdayCells(y, m);
+  const heights = cells.map(day => {
+    if (!day) return 0.1 * H;
+    const r = mealInfoFor(mealsOf(new Date(y, m, day)), mt);
+    return Array.isArray(r[0]) ? r[0].length * RAW_LH + 0.05 * H : 0.1 * H;
+  });
+  const ch = Math.max(...heights);
+  const html = cells.map(day => {
+    const cls = 'ccell';
+    if (!day) return `<div class="${cls}" style="height:${ch}px"><div class="chead">&#8203;</div><div class="cdiv"></div></div>`;
+    const d = new Date(y, m, day), r = mealInfoFor(mealsOf(d), mt);
+    let body;
+    if (typeof r[0] === 'string') body = `<span class="msg">${esc(r[0])}</span>`;
+    else body = r[0].map((it, j) => `<span class="${S.hl.has(hlKey(d, r[2], j)) ? 'hl on' : ''}">${esc(it)}</span>`).join('');
+    const tap = Array.isArray(r[0]);
+    return `<div class="${cls}${tap ? ' tap' : ''}" style="height:${ch}px" ${tap ? `data-act="cell" data-day="${day}" data-mt="${mt}"` : ''}>
+      <div class="chead">${day}</div><div class="cdiv"></div><div class="cbody">${body}</div></div>`;
+  }).join('');
+  return `<div class="pg"><div class="ccard"><div class="cscroll"><div class="ctitle f t">${y}년 ${m + 1}월 식단표</div><div class="ctable">${html}</div></div></div></div>`;
+}
+function calendarScreen() {
+  const actions = `<div style="padding:0 10.83px">${ibtn('help-cal', 'question', 23 * SH)}</div>`;
+  return centerBar('월간 식단표', { actions }) + `<div class="calbody">
+    <div class="seg">${['조식', '중식', '석식'].map((l, i) => `<button class="f${S.calPage === i ? ' on' : ''}" data-act="seg" data-i="${i}">${l}</button>`).join('')}</div>
+    <div class="pv" data-pager="cal"><div class="pvt" style="width:${3 * W}px;transform:translateX(${-S.calPage * W}px)">${[0, 1, 2].map(calCard).join('')}</div></div></div>`;
+}
+
+/* ---- timetable ---- */
+const todayKey = () => DAYS[wd(TODAY) - 1];
+function ttToday() {
+  const day = S.tt[todayKey()], maxP = Math.max(0, ...Object.keys(day).map(Number));
+  const md = `${pad2(TODAY.getMonth() + 1)}월 ${pad2(TODAY.getDate())}일 ${KWD[wd(TODAY) - 1]}요일`;
+  let rows = '';
+  for (let p = 1; p <= maxP; p++) rows += `<div class="trow"><div><div class="in"><div class="p f t">${p}교시</div><div class="s"><div class="fit"><span class="f t">${esc(day[p] || '')}</span></div></div></div></div></div>`;
+  return `<div class="scroll"><div class="today"><div class="cls f">${S.grade}학년 ${S.classNum}반</div><div class="bar"></div><div class="dt f">${md}</div>
+    <div class="tgrid">${rows}</div></div></div>`;
+}
+function weekGrid(edit) {
+  const dates = weekDates();
+  let h = `<div class="wh0">0</div><div></div>` + DAYS.map((d, i) => `<div class="wh f"><span class="d">${d}/</span><span class="n">${dates[i].getDate()}</span></div>`).join('');
+  for (let p = 1; p <= S.maxPeriod; p++) {
+    h += `<div class="wn fd">${p}</div><div></div>`;
+    DAYS.forEach((d, i) => {
+      const s = S.tt[d][p] || '', mod = edit && S.mods.has(`${d}-${p}`);
+      h += `<div class="wc${p === 1 ? ' top' : ''}${i === 0 ? ' left' : ''}${mod ? ' mod' : ''}${edit ? ' tap' : ''}" ${edit ? `data-act="editcell" data-d="${d}" data-p="${p}"` : ''}><span class="f">${esc(s)}</span></div>`;
+    });
+  }
+  return `<div class="wgrid">${h}</div>`;
+}
+function timetableTab() {
+  const actions = `<div style="padding-right:8.67px">${ibtn('help-tt', 'question', 23 * SH)}</div>
+    <div style="padding-right:17.33px">${ibtn('edit', 'edit', 28 * SH)}</div>`;
+  const tabs = `<div class="tabbar">${['오늘', '주간'].map((l, i) => `<button class="tab f${S.ttTab === i ? ' on' : ''}" data-act="tttab" data-i="${i}">${l}</button>`).join('')}
+    <div class="tabdiv"></div><div class="tabind" style="transform:translateX(${S.ttTab * 100}%)"></div></div>`;
+  return logoBar(actions, tabs) + `<div class="ttbody pv" data-pager="tt"><div class="pvt" style="width:${2 * W}px;transform:translateX(${-S.ttTab * W}px)">
+    <div class="pg">${ttToday()}</div><div class="pg"><div class="scroll"><div class="wk">${weekGrid(false)}</div></div></div></div></div>`;
+}
+function editScreen() {
+  const actions = `<div style="padding-right:17.33px">${ibtn('refresh', 'refresh', 23 * SH)}</div>`;
+  return centerBar('시간표 수정', { actions }) + `<div style="flex:1;min-height:0;padding-bottom:34px"><div class="scroll"><div style="padding:16.88px 7.8px">
+    ${weekGrid(true)}
+    <div class="pm"><button class="ib${S.maxPeriod > 7 ? ' en' : ''}" data-act="pminus" aria-label="교시 줄이기">${ic('remove', 24)}</button><button class="ib${S.maxPeriod < 12 ? ' en' : ''}" data-act="pplus" aria-label="교시 늘리기">${ic('add', 24)}</button></div>
+  </div></div></div>`;
+}
+
+/* ---- settings ---- */
+function tile(icon, title, act, trailing) {
+  return `<button class="lt" data-act="${act}">${icon ? `<span class="lead-ic">${ic(icon, 24)}</span>` : ''}<span class="ttl f" style="font-size:17.33px">${title}</span><span class="trl">${trailing}</span></button>`;
+}
+function settingsTab() {
+  const arrow = `<span style="color:var(--ic)">${ic('arrowFwd', 17.33)}</span>`;
+  const gap = `<div style="height:${16 * SH}px"></div>`;
+  return `<header class="ab"><div class="tool"></div><div class="sett-title f">설정</div></header>
+    <div style="flex:1;padding-top:${10 * SH}px">${tile('school', '학교 정보 설정', 'go-school', arrow)}${gap}${tile('home', '첫 화면 설정', 'go-first', arrow)}${gap}${tile('palette', '테마 설정', 'go-theme', arrow)}</div>`;
+}
+const chk = on => on ? `<span style="color:#2196F3">${ic('check', 24)}</span>` : '';
+function optList(items) {
+  return `<div style="flex:1">${items.map(([label, act, val, on, style]) =>
+    `<button class="lt" data-act="${act}" data-v="${val}"><span class="ttl" style="font-size:16px;${style || ''}">${label}</span><span class="trl">${chk(on)}</span></button>`).join('')}</div>`;
+}
+const subBar = t => centerBar(t, { lead: 25 * SH, size: 19.5, padL: 5.42 });
+function themeScreen() {
+  const arrow = `<span style="color:var(--trail)">${ic('arrowFwd', 16)}</span>`;
+  return subBar('테마 설정') + `<div style="flex:1">${['화면 색상 변경|go-display', '글씨체 변경|go-font'].map(s => { const [l, a] = s.split('|');
+    return `<button class="lt" data-act="${a}"><span class="ttl f" style="font-size:16px">${l}</span><span class="trl">${arrow}</span></button>`; }).join('')}</div>`;
+}
+function displayScreen() {
+  return subBar('화면 색상 변경') + optList([['라이트 모드', 'set-theme', 'light', S.theme === 'light', ''], ['다크 모드', 'set-theme', 'dark', S.theme === 'dark', ''],
+    ['시스템 설정 모드', 'set-theme', 'system', S.theme === 'system', '']].map(o => (o[4] = 'font-family:var(--ff)', o)));
+}
+function fontScreen() {
+  return subBar('글씨체 변경') + optList([['기본 폰트', 'set-font', '', S.font === '', 'font-family:var(--fd)'],
+    ['서울남산체', 'set-font', 'Seoul', S.font === 'Seoul', 'font-family:Seoul,var(--fd)'],
+    ['배달의 민족 주아체', 'set-font', 'BMJUA', S.font === 'BMJUA', 'font-family:BMJUA,var(--fd)']]);
+}
+function firstScreen() {
+  const opts = [['restaurant', '오늘 식단표', '0,0'], ['editCal', '오늘 시간표', '1,0'], ['calendar', '주간 시간표', '1,1']];
+  return subBar('첫 화면 설정') + `<div style="flex:1">${opts.map(([icn, l, v]) =>
+    `<button class="lt" data-act="set-first" data-v="${v}"><span class="lead-ic">${ic(icn, 24)}</span><span class="ttl f" style="font-size:16px;color:var(--firstTx)">${l}</span><span class="trl">${chk(S.firstScreen.join(',') === v)}</span></button>`).join('')}</div>`;
+}
+function formChanged() {
+  const f = S.form;
+  return f.school !== S.school || (f.grade !== '' && +f.grade !== S.grade) || (f.classNum !== '' && +f.classNum !== S.classNum);
+}
+function schoolScreen() {
+  const f = S.form || (S.form = { school: S.school, grade: String(S.grade), classNum: String(S.classNum) });
+  const en = f.grade !== '' && f.classNum !== '' && formChanged();
+  return subBar('학교 선택') + `<div class="form">
+    <div class="flabel f">학교</div><button class="field ro fd" data-act="go-search">${esc(f.school || '학교를 입력해주세요')}</button>
+    <div style="height:${10 * SH}px"></div>
+    <div class="flabel f">학년</div><input class="field fd" data-in="grade" inputmode="numeric" placeholder="학년을 입력해주세요" value="${esc(f.grade)}">
+    <div style="height:${10 * SH}px"></div>
+    <div class="flabel fd">반</div><input class="field fd" data-in="classNum" inputmode="numeric" placeholder="반을 입력해주세요" value="${esc(f.classNum)}">
+    <div style="flex:1"></div>
+    <div class="notice"><div class="fit"><span class="f">* <em>잘못된 정보</em>를 입력한 경우 올바른 시간표, 식단표가 불러와지지 않아요!
+* 특정 학교는 시간표 정보가 <em>자동으로 제공</em>되지 않을 수 있어요.
+   이런 경우에는 <em>시간표 수정</em> 기능을 사용해 주세요!
+</span></div></div>
+    <button class="done f${en ? ' en' : ''}" data-act="${en ? 'school-done' : ''}">완료</button></div>`;
+}
+function searchResults() {
+  const s = S.search;
+  if (s.loading) return `<div class="empty"><svg class="spin" viewBox="0 0 36 36"><circle cx="18" cy="18" r="16"/></svg></div>`;
+  if (!s.results.length) return `<div class="empty f">검색 결과가 없습니다.</div>`;
+  return `<div class="scroll" style="padding-top:5px">${s.results.map((r, i) => {
+    const k = r[0].indexOf(s.q), nm = k < 0 || !s.q ? esc(r[0]) : `${esc(r[0].slice(0, k))}<b>${esc(s.q)}</b>${esc(r[0].slice(k + s.q.length))}`;
+    return `<button class="sitem fd" data-act="pick-school" data-i="${i}"><div class="nm">${nm}</div><div class="ad">${esc(r[1])}</div></button>`; }).join('')}</div>`;
+}
+function searchScreen() {
+  return `<div style="height:47px;flex:none"></div><div class="sbar">${ibtn('back', 'chevronLeft', 24)}
+    <input class="fd" data-in="search" placeholder="학교 검색..." value="${esc(S.search.q)}">${S.search.q ? ibtn('clear-search', 'clear', 24) : ''}</div>
+    <div class="sres" data-sres>${searchResults()}</div>`;
+}
+
+const ROUTES = { calendar: calendarScreen, edit: editScreen, school: schoolScreen, search: searchScreen, first: firstScreen,
+  theme: themeScreen, display: displayScreen, font: fontScreen };
+function homeHtml() { return `<div class="tabbody">${[mealTab, timetableTab, settingsTab][S.tab]()}</div>${navBar()}`; }
+
+/* =====================================================================
+   5. Layer management
+   ===================================================================== */
+function makeLayer(id, cls = '') {
+  const el = document.createElement('div');
+  el.className = 'layer ' + cls; el.dataset.route = id;
+  el.innerHTML = id === 'home' ? homeHtml() : ROUTES[id]();
+  return el;
+}
+function layerEls() { return [...layersEl.children].filter(l => !l.dataset.leaving); }
+function post(el) { fitAll(el); el.querySelectorAll('[data-uline]').forEach(sizeUnderline); }
+function rerender(id) {         // re-render one mounted layer (keeps scroll position of first .scroll / .cscroll)
+  const el = layersEl.querySelector(`.layer[data-route="${id}"]:not([data-leaving])`);
+  if (!el) return;
+  const keep = [...el.querySelectorAll('.scroll,.cscroll,.mscroll')].map(s => s.scrollTop);
+  el.innerHTML = id === 'home' ? homeHtml() : ROUTES[id]();
+  [...el.querySelectorAll('.scroll,.cscroll,.mscroll')].forEach((s, i) => { if (keep[i]) s.scrollTop = keep[i]; });
+  post(el);
+}
+function rerenderAll() { layerEls().forEach(l => rerender(l.dataset.route)); }
+function buildAll() {
+  layersEl.innerHTML = '';
+  const ids = ['home', ...S.routes];
+  ids.forEach((id, i) => { const l = makeLayer(id, i < ids.length - 1 ? 'under' : ''); layersEl.appendChild(l); post(l); });
+}
+function push(id) {
+  closeOverlay();
+  const below = layerEls().at(-1);
+  S.routes.push(id);
+  const vertical = id === 'search';
+  const l = makeLayer(id, vertical ? 'fade offdown' : 'off');
+  layersEl.appendChild(l); post(l);
+  if (ANIM) { l.getBoundingClientRect(); }
+  l.classList.remove('off', 'offdown');
+  if (!vertical && below) below.classList.add('under');
+  emitScreen();
+}
+function pop() {
+  if (!S.routes.length) return;
+  closeOverlay();
+  const id = S.routes.pop(), els = layerEls(), top = els.at(-1), below = els.at(-2);
+  if (id === 'school') S.form = null;
+  if (id === 'search') { S.search = { q: '', results: [], loading: false }; rerender('school'); }
+  top.dataset.leaving = '1';
+  top.classList.add(id === 'search' ? 'offdown' : 'off');
+  if (below) below.classList.remove('under');
+  setTimeout(() => top.remove(), ANIM ? 260 : 0);
+  emitScreen();
+}
+
+/* =====================================================================
+   6. FittedBox + underline helpers
+   ===================================================================== */
+function fitAll(scope) {
+  scope.querySelectorAll('.fit').forEach(el => {
+    const s = el.firstElementChild; if (!s) return;
+    s.style.transform = ''; el.style.height = '';
+    const avail = el.clientWidth, w = s.offsetWidth;
+    if (avail > 0 && w > avail + .5) { const k = avail / w; s.style.transform = `scale(${k})`; el.style.height = (s.offsetHeight * k) + 'px'; }
+  });
+}
+function sizeUnderline(u) {     // CustomPaint width = TextPainter width of school name (unscaled)
+  const name = u.parentElement.querySelector('.name');
+  u.style.width = name.offsetWidth + 'px';
+}
+function refitAll() { layerEls().forEach(post); fitAll(overlayEl); }
+
+/* =====================================================================
+   7. Overlays (dialogs, sheet, snackbar)
+   ===================================================================== */
+function closeOverlay() { overlayEl.innerHTML = ''; }
+function openDialog(inner, cls = '', bg = 'var(--bg)') {
+  overlayEl.innerHTML = `<div class="barrier" data-act="close"></div><div class="dlgwrap"><div class="dlg ${cls}" style="background:${bg}">${inner}</div></div>`;
+  fitAll(overlayEl);
+}
+const HL_SPAN = '<span style="background:rgba(255,255,0,.6)">형광펜</span>';
+const HELP = {
+  'help-meal': `<div class="dc f" style="line-height:1.5">조식 또는 석식이 있는 경우\n식단표를 클릭하여 카드를\n넘길 수 있어요!\n\n메뉴를 길게 눌러\n선호하는 메뉴에 ${HL_SPAN}을\n칠할 수 있어요!\n​</div>`,
+  'help-cal': `<div class="dc f" style="line-height:1.03">식단표를 눌러 상세 정보를 \n확인할 수 있어요!\n\n식단표 상세 보기 후 메뉴를 길게 눌러\n선호하는 메뉴에 ${HL_SPAN}을 칠할 수 있어요!\n​</div>`,
+  'help-tt': `<div class="dc f t">특정 학교는 시간표 정보가\n자동으로 제공되지 않을 수 있어요.\n\n이런 경우에는 시간표 수정 기능을\n이용해 주세요!\n​</div>`,
+};
+function openHelp(k) { openDialog(`<div class="dt f">도움말</div>${HELP[k]}`); }
+let popupCtx = null;
+function popupHtml() {
+  const { d, mt } = popupCtx, r = mealInfoFor(mealsOf(d), mt);
+  const items = r[0].map((it, j) => `<div class="fit"><span class="f hl${S.hl.has(hlKey(d, r[2], j)) ? ' on' : ''}" data-act="pop-hl" data-j="${j}">${esc(it)}</span></div>`).join('');
+  return `<div class="dt"><div class="fit"><span class="f">${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 식단</span></div><div class="uline2"></div></div>
+    <div class="items">${items}<div class="kc f">\n${esc(r[1])}</div></div>
+    <div class="acts2"><button class="ebtn f" data-act="close">닫기</button></div>`;
+}
+function openPopup(day, mt) {
+  popupCtx = { d: new Date(TODAY.getFullYear(), TODAY.getMonth(), day), mt };
+  openDialog(popupHtml(), 'pop', 'var(--card)');
+}
+let sheetCtx = null;
+function openSheet(d, p) {
+  sheetCtx = { d, p };
+  overlayEl.innerHTML = `<div class="barrier" data-act="close"></div><div class="sheet">
+    <div class="st f">과목 수정 - ${d}요일 ${p}교시</div>
+    <input data-in="subject" placeholder="과목명을 입력해주세요" value="${esc(S.tt[d][p] || '')}" enterkeyhint="done">
+    <button class="save f" data-act="save-subject">저장</button></div>`;
+  syncSave();
+  if (!touring) { const inp = overlayEl.querySelector('input'); inp.focus({ preventScroll: true }); inp.setSelectionRange(inp.value.length, inp.value.length); }
+}
+function syncSave() {
+  const inp = overlayEl.querySelector('.sheet input'), b = overlayEl.querySelector('.sheet .save');
+  if (inp && b) b.classList.toggle('en', inp.value.length > 0);
+}
+let snackTimer = 0;
+function snack(text) {
+  overlayEl.querySelector('.snack')?.remove();
+  const el = document.createElement('div'); el.className = 'snack f'; el.textContent = text; overlayEl.appendChild(el);
+  clearTimeout(snackTimer); snackTimer = setTimeout(() => el.remove(), 1400);
+}
+
+/* =====================================================================
+   8. State updates
+   ===================================================================== */
+function setPage(name, i, animate = true) {
+  const P = PAGERS[name]; i = Math.max(0, Math.min(P.count - 1, i));
+  const changed = P.get() !== i; P.set(i);
+  const pv = app.querySelector(`.layer:not([data-leaving]) [data-pager="${name}"] > .pvt`);
+  if (pv) { pv.style.transition = animate && ANIM ? '' : 'none'; pv.style.transform = `translateX(${-i * W}px)`; }
+  P.sync();
+  if (changed && P.emit) emitScreen();
+}
+const PAGERS = {
+  meal: { count: 3, get: () => S.mealPage, set: i => { S.mealPage = i; },
+    sync: () => app.querySelectorAll('.dots .dot').forEach((d, k) => d.classList.toggle('on', k === S.mealPage)) },
+  cal: { count: 3, get: () => S.calPage, set: i => { S.calPage = i; },
+    sync: () => app.querySelectorAll('.seg button').forEach((b, k) => b.classList.toggle('on', k === S.calPage)) },
+  tt: { count: 2, get: () => S.ttTab, set: i => { S.ttTab = i; }, emit: true,
+    sync: () => { app.querySelectorAll('.tabbar .tab').forEach((b, k) => b.classList.toggle('on', k === S.ttTab));
+      const ind = app.querySelector('.tabind'); if (ind) ind.style.transform = `translateX(${S.ttTab * 100}%)`; } },
+};
+function refreshMealCards() {
+  app.querySelectorAll('.layer[data-route="home"] .mcard').forEach(c => {
+    const i = +c.dataset.i, sc = c.firstElementChild, top = sc.scrollTop;
+    sc.innerHTML = mealCardInner(i); sc.scrollTop = top; fitAll(c);
+  });
+}
+function toggleHL(d, t, j) {
+  const k = hlKey(d, t, j);
+  S.hl.has(k) ? S.hl.delete(k) : S.hl.add(k);
+  refreshMealCards();
+  if (S.routes.includes('calendar')) rerender('calendar');
+}
+function applyTheme() {
+  root.classList.toggle('dark', isDark());
+  root.classList.toggle('font-seoul', S.font === 'Seoul');
+  root.classList.toggle('font-default', S.font === '');
+}
+function setTab(i) { closeOverlay(); S.tab = i; rerender('home'); emitScreen(); }
+
+/* =====================================================================
+   9. Actions (event delegation on data-act)
+   ===================================================================== */
+const A = {
+  tab: el => { if (S.tab !== +el.dataset.i) setTab(+el.dataset.i); },
+  cycle: el => { const i = +el.dataset.i, v = mealsOf(addDays(TODAY, i - 1)); S.card[i] = (S.card[i] + 1) % v.length; refreshMealCards(); },
+  hl: el => { const i = +el.dataset.i, d = addDays(TODAY, i - 1), m = mealsOf(d)[S.card[i]]; toggleHL(d, m[2], +el.dataset.j); },
+  calendar: () => { S.calPage = 1; push('calendar'); },
+  'help-meal': () => openHelp('help-meal'), 'help-cal': () => openHelp('help-cal'), 'help-tt': () => openHelp('help-tt'),
+  back: () => pop(),
+  close: () => closeOverlay(),
+  seg: el => setPage('cal', +el.dataset.i),
+  cell: el => openPopup(+el.dataset.day, +el.dataset.mt),
+  'pop-hl': el => { const { d, mt } = popupCtx, r = mealInfoFor(mealsOf(d), mt); toggleHL(d, r[2], +el.dataset.j); el.classList.toggle('on', S.hl.has(hlKey(d, r[2], +el.dataset.j))); },
+  tttab: el => setPage('tt', +el.dataset.i),
+  edit: () => push('edit'),
+  editcell: el => openSheet(el.dataset.d, +el.dataset.p),
+  'save-subject': () => {
+    const v = overlayEl.querySelector('.sheet input').value; if (!v) return;
+    const { d, p } = sheetCtx; S.tt[d][p] = v; S.mods.add(`${d}-${p}`); closeOverlay(); rerender('edit'); rerender('home');
+  },
+  pminus: () => { if (S.maxPeriod > 7) { S.maxPeriod--; rerender('edit'); rerender('home'); } },
+  pplus: () => { if (S.maxPeriod < 12) { S.maxPeriod++; rerender('edit'); rerender('home'); } },
+  refresh: () => {             // loadWeeklyTimetable_api_only: refetch + clear user edits
+    overlayEl.innerHTML = `<div class="busy"><svg class="spin" viewBox="0 0 36 36"><circle cx="18" cy="18" r="16"/></svg></div>`;
+    setTimeout(() => { resetTimetable(false); closeOverlay(); rerender('edit'); rerender('home'); snack('새로고침이 완료되었습니다.'); }, STATIC ? 0 : 700);
+  },
+  'go-school': () => { S.form = null; push('school'); }, 'go-first': () => push('first'), 'go-theme': () => push('theme'),
+  'go-display': () => push('display'), 'go-font': () => push('font'), 'go-search': () => push('search'),
+  'set-theme': el => { S.theme = el.dataset.v; applyTheme(); swapLogos(); rerenderAll(); },
+  'set-font': el => { S.font = el.dataset.v; applyTheme(); rerenderAll(); if (document.fonts) document.fonts.ready.then(refitAll); },
+  'set-first': el => { S.firstScreen = el.dataset.v.split(',').map(Number); rerender('first'); },
+  'clear-search': () => { S.search.q = ''; rerender('search'); },
+  'pick-school': el => { S.form.school = S.search.results[+el.dataset.i][0]; pop(); },
+  'school-done': () => {
+    const f = S.form, schoolChanged = f.school !== S.school;
+    if (schoolChanged) { S.hl = new Set(); resetTimetable(false); }                 // meal / timetable / modified boxes cleared
+    else if (+f.grade !== S.grade || +f.classNum !== S.classNum) resetTimetable(false);
+    S.school = f.school; S.grade = +f.grade; S.classNum = +f.classNum; S.form = null;
+    const ld = document.createElement('div'); ld.className = 'loading';
+    ld.innerHTML = `<div style="width:250px;height:250px"></div><div class="tx f">로딩 중.. 잠시만 기다려주세요.</div>`;
+    overlayEl.innerHTML = ''; overlayEl.appendChild(ld);
+    setTimeout(() => { closeOverlay(); S.routes = []; S.tab = S.firstScreen[0]; S.ttTab = S.firstScreen[1]; S.mealPage = 1; buildAll(); emitScreen(); }, STATIC ? 0 : 900);
+  },
+};
+
+let justDragged = false;
+app.addEventListener('click', e => {
+  if (justDragged) { e.stopPropagation(); e.preventDefault(); return; }
+  const el = e.target.closest('[data-act]');
+  if (!el || !app.contains(el)) return;
+  const f = A[el.dataset.act]; if (f) f(el, e);
+});
+app.addEventListener('contextmenu', e => { if (!e.target.closest('input')) e.preventDefault(); });
+let searchTimer = 0;
+app.addEventListener('input', e => {
+  const k = e.target.dataset.in; if (!k) return;
+  if (k === 'grade' || k === 'classNum') {
+    e.target.value = e.target.value.replace(/\D/g, ''); S.form[k] = e.target.value;
+    const en = S.form.grade !== '' && S.form.classNum !== '' && formChanged(), b = app.querySelector('.done');
+    b.classList.toggle('en', en); b.dataset.act = en ? 'school-done' : '';
+  } else if (k === 'subject') syncSave();
+  else if (k === 'search') {
+    const q = e.target.value; S.search.q = q; S.search.loading = true;
+    const bar = e.target.parentElement;
+    if (q && !bar.querySelector('[data-act="clear-search"]')) bar.insertAdjacentHTML('beforeend', ibtn('clear-search', 'clear', 24));
+    if (!q) bar.querySelector('[data-act="clear-search"]')?.remove();
+    app.querySelector('[data-sres]').innerHTML = searchResults();
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {                 // debounce 500ms like search_school_screen.dart (mock, no NEIS call)
+      S.search.results = q.trim() ? SCHOOLS.filter(s => s[0].includes(q.trim())) : [];
+      S.search.loading = false; const r = app.querySelector('[data-sres]'); if (r) r.innerHTML = searchResults();
+    }, 500);
+  }
+});
+app.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.dataset.in === 'subject') A['save-subject']();
+});
+
+/* ---- horizontal pagers (PageView / TabBarView) ---- */
+let drag = null, scale = 1;
+app.addEventListener('pointerdown', e => {
+  const pv = e.target.closest('[data-pager]');
+  if (!pv || e.button > 0) return;
+  drag = { pv, name: pv.dataset.pager, x0: e.clientX, y0: e.clientY, t0: performance.now(), axis: null, id: e.pointerId, track: pv.firstElementChild };
+});
+window.addEventListener('pointermove', e => {
+  if (!drag || e.pointerId !== drag.id) return;
+  const dx = (e.clientX - drag.x0) / scale, dy = (e.clientY - drag.y0) / scale;
+  if (!drag.axis && Math.hypot(dx, dy) > 8) {
+    drag.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+    if (drag.axis === 'x') { drag.track.style.transition = 'none'; try { drag.pv.setPointerCapture(e.pointerId); } catch (_) {} }
+  }
+  if (drag.axis === 'x') {
+    const P = PAGERS[drag.name], i = P.get();
+    const off = ((i === 0 && dx > 0) || (i === P.count - 1 && dx < 0)) ? dx * .3 : dx;
+    drag.track.style.transform = `translateX(${-i * W + off}px)`;
+  }
+});
+function endDrag(e) {
+  if (!drag || e.pointerId !== drag.id) return;
+  if (drag.axis === 'x') {
+    const dx = (e.clientX - drag.x0) / scale, v = dx / Math.max(1, performance.now() - drag.t0), P = PAGERS[drag.name];
+    let i = P.get();
+    if (dx < -W * .18 || v < -.45) i++; else if (dx > W * .18 || v > .45) i--;
+    setPage(drag.name, i);
+    justDragged = true; setTimeout(() => { justDragged = false; }, 0);
+  }
+  drag = null;
+}
+window.addEventListener('pointerup', endDrag);
+window.addEventListener('pointercancel', e => { if (drag && drag.axis === 'x') { setPage(drag.name, PAGERS[drag.name].get()); } drag = null; });
+
+/* =====================================================================
+   10. Screen ids, goto, host messaging
+   ===================================================================== */
+const SCREEN_ROUTES = {
+  meal: [0, []], calendar: [0, ['calendar']], timetable: [1, []], weekly: [1, []], edit: [1, ['edit']], settings: [2, []],
+  school: [2, ['school']], search: [2, ['school', 'search']], first: [2, ['first']], theme: [2, ['theme']],
+  display: [2, ['theme', 'display']], font: [2, ['theme', 'font']],
+};
+function currentScreen() {
+  const top = S.routes.at(-1);
+  if (top) return top;
+  return S.tab === 0 ? 'meal' : S.tab === 1 ? (S.ttTab ? 'weekly' : 'timetable') : 'settings';
+}
+let lastEmitted = '';
+function emitScreen(force) {
+  const id = currentScreen();
+  if (id === lastEmitted && !force) return;
+  lastEmitted = id;
+  if (window.parent !== window) window.parent.postMessage({ type: 'demo:screen', app: 'smeal', screen: id }, '*');
+}
+function goto(id) {
+  const r = SCREEN_ROUTES[id]; if (!r) return;
+  closeOverlay();
+  S.tab = r[0]; S.routes = r[1].slice(); S.form = null; S.search = { q: '', results: [], loading: false };
+  if (id === 'timetable') S.ttTab = 0;
+  if (id === 'weekly') S.ttTab = 1;
+  if (id === 'calendar') S.calPage = 1;
+  buildAll(); emitScreen();
+}
+window.addEventListener('message', e => {
+  const m = e.data; if (!m || typeof m !== 'object') return;
+  if (m.type === 'demo:goto') { stopTour(); goto(m.screen); }
+  else if (m.type === 'demo:autoplay') { m.on ? startTour() : stopTour(); }
+});
+
+/* =====================================================================
+   11. Autoplay tour
+   ===================================================================== */
+let touring = false, tourGen = 0;
+const wait = (ms, g) => new Promise((res, rej) => setTimeout(() => (g === tourGen ? res() : rej('stop')), ms));
+function tapFx(el) {
+  const r = el.getBoundingClientRect(), a = app.getBoundingClientRect();
+  const d = document.createElement('div'); d.className = 'tapfx';
+  d.style.left = ((r.left + r.width / 2 - a.left) / scale) + 'px'; d.style.top = ((r.top + r.height / 2 - a.top) / scale) + 'px';
+  fxEl.appendChild(d); setTimeout(() => d.remove(), 700);
+}
+const q = sel => { const els = [...app.querySelectorAll(sel)].filter(el => !el.closest('[data-leaving]')); return els.at(-1); };
+async function tap(sel, g, after = 0) {
+  const el = typeof sel === 'string' ? q(sel) : sel;
+  if (!el) return;
+  tapFx(el); await wait(260, g);
+  el.click(); if (after) await wait(after, g);
+}
+function resetForTour() {
+  closeOverlay();
+  S.hl = seedHighlights(false); resetTimetable(true);
+  S.card = [0, 1, 2].map(defaultCardIndex); S.mealPage = 1; S.calPage = 1; S.ttTab = 0;
+  S.tab = 0; S.routes = []; buildAll(); emitScreen();
+}
+async function tour(g) {
+  for (;;) {
+    resetForTour();
+    await wait(1100, g);
+    await tap('.pg:nth-child(2) [data-act="hl"][data-j="2"]', g, 1000);
+    await tap('.pg:nth-child(2) [data-act="hl"][data-j="5"]', g, 1200);
+    await tap('.pg:nth-child(2) .mc-title', g, 1200);     // 중식 -> 석식
+    await tap('.pg:nth-child(2) .mc-title', g, 1200);     // -> 조식
+    await tap('.pg:nth-child(2) .mc-title', g, 1100);     // -> 중식
+    await tap('[data-act="calendar"]', g, 1500);
+    const cell = q(`.layer[data-route="calendar"] .pg:nth-child(2) [data-act="cell"][data-day="${TODAY.getDate()}"]`);
+    if (cell) { cell.scrollIntoView({ block: 'nearest' }); await tap(cell, g, 2000); await tap('[data-act="close"].ebtn', g, 700); }
+    await tap('.layer[data-route="calendar"] [data-act="back"]', g, 1000);
+    await tap('.navi[data-i="1"]', g, 1400);
+    await tap('.tab[data-i="1"]', g, 1400);
+    await tap('[data-act="edit"]', g, 1300);
+    await tap('[data-act="editcell"][data-d="목"][data-p="5"]', g, 600);
+    const inp = overlayEl.querySelector('.sheet input');
+    if (inp) { inp.value = ''; syncSave(); await wait(350, g); inp.value = '미'; syncSave(); await wait(220, g); inp.value = '미술'; syncSave(); await wait(700, g); }
+    await tap('[data-act="save-subject"]', g, 1500);
+    await tap('.layer[data-route="edit"] [data-act="back"]', g, 1000);
+    await tap('.navi[data-i="0"]', g, 1800);
+  }
+}
+function startTour() {
+  if (STATIC) return;
+  stopTour(); touring = true; const g = ++tourGen;
+  tour(g).catch(() => {});
+}
+function stopTour() { if (!touring) return; touring = false; tourGen++; fxEl.innerHTML = ''; }
+['pointerdown', 'keydown', 'touchstart'].forEach(t => window.addEventListener(t, e => { if (e.isTrusted && touring) stopTour(); }, { capture: true, passive: true }));
+
+/* =====================================================================
+   12. Scale-to-fit + boot
+   ===================================================================== */
+// Headless Chrome clamps the layout viewport to >=500px wide but captures only --window-size,
+// so anchor left there (screenshots); real browsers/iframes are centered.
+const HEADLESS = /HeadlessChrome/.test(navigator.userAgent) && window.top === window;
+function fitViewport() {
+  const vw = window.innerWidth, vh = window.innerHeight;
+  scale = Math.min(vw / W, vh / H);
+  const x = HEADLESS ? 0 : (vw - W * scale) / 2;
+  app.style.transform = `translate(${x}px, ${(vh - H * scale) / 2}px) scale(${scale})`;
+}
+window.addEventListener('resize', fitViewport);
+function swapLogos() { app.querySelectorAll('.logo img').forEach(img => { img.src = logoSrc(); }); }
+matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { if (S.theme === 'system') { applyTheme(); swapLogos(); } });
+
+function measureRawLH() {
+  const s = document.createElement('span');
+  s.style.cssText = 'position:absolute;visibility:hidden;font-size:8.58px;line-height:normal;white-space:nowrap';
+  s.className = 'fd'; s.textContent = '샘플'; app.appendChild(s);
+  RAW_LH = s.getBoundingClientRect().height / (scale || 1) || 10; s.remove();
+}
+
+fitViewport();
+applyTheme();
+measureRawLH();
+const initial = SCREEN_ROUTES[Q.get('screen')] ? Q.get('screen') : null;
+if (initial) goto(initial);
+else { S.tab = S.firstScreen[0]; buildAll(); emitScreen(true); }
+if (document.fonts) {
+  document.fonts.ready.then(refitAll);
+  document.fonts.addEventListener?.('loadingdone', refitAll);
+  document.fonts.load('20px BMJUA').then(refitAll).catch(() => {});
+}
+if (S.showGif) setTimeout(() => { S.showGif = false; swapLogos(); }, 4500);     // setting_provider: GIF for 4.5s
+if (Q.get('autoplay') === '1') startTour();
+window.smealDemo = { goto, startTour, stopTour, state: S };
+})();
+</script>
+</body>
+</html>
