@@ -678,11 +678,13 @@
     if (!p) return "";
     let inner;
     if (t.phones) inner = `<div class="mq-phones">${t.phones.map((src) => `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">`).join("")}</div>`;
+    else if (t.demo) inner = `<div class="mq-demo"><div class="phone mq-phone"><div class="phone-screen"><img src="${esc(t.demo)}" alt="" loading="lazy" draggable="false"></div></div>
+        <span class="mq-live"><span class="live-dot" aria-hidden="true"></span>${esc(L("liveDemo"))}</span></div>`;
     else if (t.video) inner = `<video class="mq-media" src="${esc(t.video)}" poster="${esc(t.poster || "")}" muted loop playsinline autoplay preload="metadata" aria-hidden="true"></video>`;
     else if (t.art) inner = artHTML(p, "gray");
     else inner = `<img class="mq-media${t.fit === "contain" ? " is-contain" : ""}" src="${esc(t.src)}" alt="" loading="lazy" draggable="false"${t.pos ? ` style="object-position:center ${esc(t.pos)}"` : ""}>`;
-    const bg = t.phones ? `${groundVars(p)}background:var(--g);` : t.fit === "contain" ? "background:#fff;" : "";
-    return `<div class="mq-item" style="--r:${Number(t.ratio) || 1}">
+    const bg = t.phones || t.demo ? `${groundVars(p)}background:var(--g);` : t.fit === "contain" ? "background:#fff;" : "";
+    return `<div class="mq-item"${t.demo ? ' data-demo="1"' : ""} style="--r:${Number(t.ratio) || 1}">
       <a class="mq-tile" href="${projectHref(p.id)}" aria-label="${esc(shortOf(p))}" title="${esc(shortOf(p))}" draggable="false" style="${bg}">${inner}</a></div>`;
   }
   function buildMarquee() {
@@ -694,11 +696,28 @@
       const track = $(".mq-track", row);
       return { row, track, base: track.innerHTML, dir: Number(row.dataset.dir), x: 0, setW: 0, drag: null, vel: 0 };
     });
+    sizeMarquee();
     mq.rows.forEach(fillRow);
     mq.rows.forEach(wireDrag);
     // Pause the drift while the rows are off screen.
     if ("IntersectionObserver" in window) new IntersectionObserver((es) => { mq.visible = es.some((en) => en.isIntersecting); }).observe(box);
     if (!mq.raf && !reduceMotion) mq.raf = requestAnimationFrame(stepMarquee);
+  }
+  /* Tile height: the CSS base (350 / 290 / 220 px), raised when needed so that one set of a row is wider
+     than the screen plus its widest tile. Then the same picture can never be on screen twice. */
+  function sizeMarquee() {
+    const box = $("#mq");
+    if (!box) return;
+    box.style.removeProperty("--mq-h");
+    const base = parseFloat(getComputedStyle(box).getPropertyValue("--mq-h")) || 350;
+    const gap = parseFloat(getComputedStyle($(".mq-track", box)).columnGap) || 16;
+    let need = base;
+    (P.marquee || []).forEach((row) => {
+      const rs = row.map((t) => Number(t.ratio) || 1);
+      const room = rs.reduce((a, b) => a + b, 0) - Math.max(...rs);
+      if (room > 0) need = Math.max(need, (box.clientWidth + 8 - row.length * gap) / room);
+    });
+    box.style.setProperty("--mq-h", Math.ceil(need) + "px");
   }
   /* Repeat the tile set until it covers the row twice, then measure one set's width. */
   function fillRow(r) {
@@ -807,6 +826,19 @@
     big.style.transition = "none";
     box.appendChild(big);
     const v = $("video", big); if (v) { v.muted = true; v.play().catch(() => {}); }
+    // A demo tile turns into the real app demo once enlarged: tap through it in place.
+    const proj = byId[(tile.getAttribute("href").split("#")[1] || "")];
+    if (item.dataset.demo && proj && proj.demo) {
+      const comp = createDemo(proj);
+      const slot = $(".mq-demo", big), still = $(".mq-phone", big);
+      comp.phone.classList.add("mq-phone");
+      slot.replaceChild(comp.phone, still);
+      big.classList.add("is-demo");
+      mq.openDemo = comp;
+      const fit = () => fitPhone(comp.phone, slot, 420, true);
+      fit();
+      if ("ResizeObserver" in window) { mq.demoRO = new ResizeObserver(fit); mq.demoRO.observe(slot); }
+    }
     tile.style.visibility = "hidden";
     mq.open = { big, tile, from };
     box.classList.add("has-open");
@@ -815,7 +847,7 @@
       setBox(big, to);
       big.classList.add("is-open");
     }));
-    big.addEventListener("click", (e) => { if (e.target.closest(".mq-label a")) return; e.preventDefault(); collapseTile(); });
+    big.addEventListener("click", (e) => { if (e.target.closest(".mq-label a") || e.target.closest(".phone-screen")) return; e.preventDefault(); collapseTile(); });
     const link = $(".mq-label a", big); if (link) setTimeout(() => link.focus({ preventScroll: true }), reduceMotion ? 0 : MQ_DUR);
   }
   function collapseTile(instant) {
@@ -825,6 +857,8 @@
     const box = $("#mq");
     box.classList.remove("has-open");
     o.big.classList.remove("is-open");
+    if (mq.openDemo) { dropDemo(mq.openDemo); mq.openDemo = null; }
+    if (mq.demoRO) { mq.demoRO.disconnect(); mq.demoRO = null; }
     const done = () => { o.big.remove(); o.tile.style.visibility = ""; };
     if (instant || reduceMotion) { done(); return; }
     setBox(o.big, tileBox(o.tile, box));
@@ -1102,7 +1136,7 @@
   window.addEventListener("hashchange", () => { if (PAGE === "work") routeWork(); });
   window.addEventListener("resize", () => {
     layoutTopNav();
-    if (PAGE === "home") { collapseTile(true); clearTimeout(mq.rt); mq.rt = setTimeout(() => mq.rows.forEach(fillRow), 150); }
+    if (PAGE === "home") { collapseTile(true); clearTimeout(mq.rt); mq.rt = setTimeout(() => { sizeMarquee(); mq.rows.forEach(fillRow); }, 150); }
     else if (PAGE === "work") fitShortTitle();
   });
 

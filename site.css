@@ -252,12 +252,11 @@ html:lang(en) .live { text-transform: uppercase; }
 /* ============================================================ Home: Work marquee (two drifting rows) */
 .hero:has(+ .mq-sec) { display: block; height: auto; min-height: 0; padding-bottom: 0; }
 .hero:has(+ .mq-sec) .hero-text { padding-top: clamp(32px, 6.6vw, 104px); padding-bottom: 0; }
-.mq-sec { padding-top: clamp(56px, 6.4vw, 104px); }
+.mq-sec { padding-top: clamp(36px, 4vw, 64px); }
 .mq-sec .hsec-head { margin-bottom: clamp(32px, 4.4vw, 64px); }
 .mq-h { margin: 0; font-size: clamp(28px, 2.5vw, 38px); line-height: 1.15; letter-spacing: -0.025em; }
-/* A row's tile set is ~9x the tile height wide; with height >= 100vw / 6.4 one set always covers the
-   screen plus its widest tile, so the same picture is never on screen twice. */
-.mq { --mq-h: max(350px, calc(100vw / 6.4)); position: relative; display: flex; flex-direction: column; gap: 16px; }
+/* Base tile height; site.js raises it when a row is too short to avoid showing a picture twice. */
+.mq { --mq-h: 350px; position: relative; display: flex; flex-direction: column; gap: 16px; }
 .mq-row { position: relative; overflow-x: clip; padding: 8px 0; margin: -8px 0; touch-action: pan-y; user-select: none; -webkit-user-select: none; cursor: grab; }
 .mq-row.is-dragging { cursor: grabbing; }
 .mq-track { display: flex; gap: 16px; width: max-content; will-change: transform; }
@@ -270,6 +269,16 @@ html:lang(en) .live { text-transform: uppercase; }
 .mq-big { position: absolute; inset: auto; z-index: 20; cursor: zoom-out; box-shadow: 0 0 0 rgb(0 0 0 / 0); }
 .mq-big.is-open { box-shadow: 0 24px 60px -20px rgb(0 0 0 / 0.25); }
 .mq-big .mq-media.is-contain { padding: 5%; }
+/* Demo tiles: one phone playing the app tour; enlarged, the phone runs the live demo */
+.mq-demo { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.mq-phone { --bz: 6px; --rad: 22px; width: auto; height: 88%; }
+.mq-phone .phone-screen { height: 100%; width: auto; aspect-ratio: 390 / 844; }
+.mq-phone .phone-screen img { width: 100%; height: 100%; object-fit: cover; }
+.mq-big.is-demo .mq-phone { height: auto; --bz: 8px; --rad: 30px; }
+.mq-big.is-demo .mq-phone .phone-screen { height: auto; width: 100%; }
+.mq-big.is-demo { cursor: default; }
+.mq-live { position: absolute; left: 14px; top: 14px; display: inline-flex; align-items: center; gap: 7px; min-height: 28px; padding: 0 11px; border-radius: 999px; background: rgb(255 255 255 / 0.82); font: 400 11.5px/1 var(--label); letter-spacing: .02em; color: var(--ink); }
+html:lang(en) .mq-live { text-transform: uppercase; }
 .mq-label { position: absolute; left: 16px; bottom: 16px; opacity: 0; transform: translateY(4px); transition: opacity .25s ease, transform .25s ease; }
 .mq-big.is-open .mq-label { opacity: 1; transform: none; transition-delay: .3s; }
 .mq-label a { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 14px; border-radius: 999px; background: rgb(255 255 255 / 0.82); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); color: var(--ink); text-decoration: none; font-size: 15px; cursor: pointer; box-shadow: 0 0 0 1px rgb(0 0 0 / 0.06); }
