@@ -805,6 +805,35 @@ window.PORTFOLIO = {
     { group: { en: "AI tools in daily work", ko: "일상적으로 쓰는 AI 도구" }, items: ["Claude Code", "Codex"] }
   ],
 
+  /* Home page "Work" marquee (after gabrielvaldivia.com): two rows of image tiles, the first
+     drifting left and the second right. Each tile links to its project. ratio = width / height.
+     fit "contain" puts the picture on white with padding; phones = several screens on the project color. */
+  marquee: [
+    [
+      { p: "uniway", src: "shared/img/uniway-hero.webp", ratio: 1.72 },
+      { p: "cj", src: "shared/img/mq/cj-badge.webp", ratio: 0.75 },
+      { p: "los", src: "shared/docs/los-slides/p19.webp", ratio: 1.78 },
+      { p: "shoulder", src: "shared/img/ergo-kit.webp", ratio: 0.75 },
+      { p: "smeal", phones: ["shared/img/smeal-phone-meal.webp", "shared/img/smeal-phone-timetable.webp"], ratio: 1 },
+      { p: "emg", src: "shared/img/emg-poster-1.webp", ratio: 0.75, pos: "top" },
+      { p: "uai", video: "shared/img/mq/uai.mp4", poster: "shared/img/mq/uai-poster.webp", ratio: 0.75 },
+      { p: "uniway", phones: ["shared/img/uniway-phone-connect.webp", "shared/img/uniway-phone-market.webp"], ratio: 1 },
+      { p: "shoulder", src: "shared/img/ergo-trajectories.webp", ratio: 1.1, fit: "contain" }
+    ],
+    [
+      { p: "smeal", src: "shared/img/smeal-hero.webp", ratio: 1.26 },
+      { p: "los", src: "shared/docs/los-slides/p08.webp", ratio: 1.78 },
+      { p: "uai", src: "shared/img/mq/uai-arm.webp", ratio: 1 },
+      { p: "emg", src: "shared/docs/emg-paper/p1.webp", ratio: 0.77, pos: "top" },
+      { p: "uniway", phones: ["shared/img/uniway-phone-carpool.webp", "shared/img/uniway-phone-chat.webp", "shared/img/uniway-phone-board.webp"], ratio: 1.4 },
+      { p: "shoulder", src: "shared/img/ergo-pose.webp", ratio: 2, fit: "contain" },
+      { p: "cj", art: true, ratio: 1.2 },
+      { p: "emg", src: "shared/img/emg-signal.webp", ratio: 1.18, fit: "contain" },
+      { p: "los", src: "shared/img/los-architecture.webp", ratio: 2.2, fit: "contain" },
+      { p: "shoulder", src: "shared/img/ergo-motive.webp", ratio: 1.6 }
+    ]
+  ],
+
   ui: {
     nav: {
       work: { en: "Work", ko: "작업" },

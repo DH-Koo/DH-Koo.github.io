@@ -664,86 +664,118 @@
   }
 
   /* =================================================================== HOME */
-  const home = { built: false, demo: null, hlAxis: null, hlRegion: null };
+  const home = { built: false };
 
 
 
-  /* ------------------------------------------------------------ Hero and featured row */
-  /* Mosaic on a six-column grid (as in the gallery version): how many columns each card spans. */
-  const SPAN = { uniway: 4, demo: 2, cj: 2, uai: 2, shoulder: 2, smeal: 2, los: 4, emg: 4, more: 2 };
-  const span = (id) => `--span:${SPAN[id] || 2};`;
-  function cardHTML(p) {
-    return `<li class="fcard" id="card-${esc(p.id)}" style="${groundVars(p)}${span(p.id)}">
-      <a class="fcard-link" href="${projectHref(p.id)}">
-        <div class="fcard-art" aria-hidden="true">${artHTML(p, "card")}</div>
-        <div class="fcard-text">
-          <p class="fcard-meta">${esc(p.year)} · ${T(p.role)}</p>
-          <h3 class="fcard-title">${esc(shortOf(p))}</h3>
-          <p class="fcard-line">${T(p.oneLiner)}</p>
-          <div class="fcard-foot"><span class="tags">${axisTags(p)}</span></div>
-        </div>
-      </a></li>`;
+  /* ------------------------------------------------------------ Hero and Work marquee
+     Two rows of picture tiles after gabrielvaldivia.com: the first drifts left, the second right,
+     about 44 px a second. Rows can be dragged; a drag does not open the tile under it. */
+  const MQ_SPEED = 44;
+  const mq = { rows: [], raf: 0, last: 0, visible: true };
+  function mqTileHTML(t) {
+    const p = byId[t.p];
+    if (!p) return "";
+    let inner;
+    if (t.phones) inner = `<div class="mq-phones">${t.phones.map((src) => `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">`).join("")}</div>`;
+    else if (t.video) inner = `<video class="mq-media" src="${esc(t.video)}" poster="${esc(t.poster || "")}" muted loop playsinline autoplay preload="metadata" aria-hidden="true"></video>`;
+    else if (t.art) inner = artHTML(p, "gray");
+    else inner = `<img class="mq-media${t.fit === "contain" ? " is-contain" : ""}" src="${esc(t.src)}" alt="" loading="lazy" draggable="false"${t.pos ? ` style="object-position:center ${esc(t.pos)}"` : ""}>`;
+    const bg = t.phones ? `${groundVars(p)}background:var(--g);` : t.fit === "contain" ? "background:#fff;" : "";
+    return `<div class="mq-item" style="--r:${Number(t.ratio) || 1}">
+      <a class="mq-tile" href="${projectHref(p.id)}" aria-label="${esc(shortOf(p))}" title="${esc(shortOf(p))}" draggable="false" style="${bg}">${inner}</a></div>`;
   }
-  /* The Uniway row holds the live demo, so it is not one big link: the phone takes taps. */
-  function demoCardHTML(p) {
-    return `<li class="fcard fcard--demo" id="card-demo" style="--g:var(--gd-${esc(p.id)});${span("demo")}">
-      <div class="fcard-link">
-        <div class="fcard-art"></div>
-        <div class="fcard-text">
-          <div class="fcard-demo-cap"><span class="live"><span class="live-dot" aria-hidden="true"></span><span class="live-text" data-live-text></span></span>
-            <button class="btn btn-mini" type="button" data-tour></button></div>
-          <h3 class="fcard-title"><a href="${projectHref(p.id)}" data-d-title></a></h3>
-          <p class="fcard-hint" data-hint></p>
-          <a class="more-link" href="${projectHref(p.id)}" data-demo-link></a>
-        </div></div></li>`;
+  function buildMarquee() {
+    const box = $("#mq");
+    if (!box) return;
+    const rows = P.marquee || [];
+    box.innerHTML = rows.map((r, i) => `<div class="mq-row" data-dir="${i % 2 ? 1 : -1}"><div class="mq-track">${r.map(mqTileHTML).join("")}</div></div>`).join("");
+    mq.rows = $$(".mq-row", box).map((row) => {
+      const track = $(".mq-track", row);
+      return { row, track, base: track.innerHTML, dir: Number(row.dataset.dir), x: 0, setW: 0, drag: null, vel: 0 };
+    });
+    mq.rows.forEach(fillRow);
+    mq.rows.forEach(wireDrag);
+    // Pause the drift while the rows are off screen.
+    if ("IntersectionObserver" in window) new IntersectionObserver((es) => { mq.visible = es.some((en) => en.isIntersecting); }).observe(box);
+    if (!mq.raf && !reduceMotion) mq.raf = requestAnimationFrame(stepMarquee);
   }
-  function moreCardHTML() {
-    return `<li class="fcard fcard--more" id="card-more" style="${span("more")}">
-      <a class="fcard-link" href="work.html">
-        <div class="fcard-text">
-          <h3 class="fcard-title">${esc(N("work"))}</h3>
-          <p class="fcard-line">${esc(L("allWork"))} · ${projects.length}</p>
-          <div class="fcard-foot">${P.axes.map((a) => `<span class="tag" style="${xc(a.id)}"><span class="dot"></span>${T(a.label)}</span>`).join("")}</div>
-          <span class="more-link"><span>${esc(L("seeAll"))}</span>${ICON.chev}</span>
-        </div></a></li>`;
+  /* Repeat the tile set until it covers the row twice, then measure one set's width. */
+  function fillRow(r) {
+    r.track.innerHTML = r.base;
+    const one = r.track.scrollWidth + parseFloat(getComputedStyle(r.track).columnGap || 16);
+    if (!one) return;
+    const copies = Math.max(2, Math.ceil((r.row.clientWidth * 2) / one) + 1);
+    r.track.innerHTML = r.base.repeat(copies);
+    const items = r.track.children, n = items.length / copies;
+    r.setW = items[n] ? items[n].offsetLeft - items[0].offsetLeft : one;
+    if (r.x === 0) r.x = r.dir > 0 ? r.setW * 0.5 : 0;
+    place(r);
   }
-  function attachDemo(li, p) {
-    const comp = createDemo(p);
-    $(".fcard-art", li).appendChild(comp.phone);
-    $("[data-tour]", li).addEventListener("click", () => comp.setPlaying(!comp.playing));
-    comp.el = li;
-    const base = comp.update;
-    comp.update = function () {
-      base();
-      $("[data-d-title]", li).textContent = shortOf(p);
-      $("[data-hint]", li).textContent = L("tapHint");
-      $("[data-demo-link]", li).innerHTML = `<span>${esc(L("viewProject"))}</span>${ICON.chev}`;
+  function place(r) {
+    if (!r.setW) return;
+    r.x = ((r.x % r.setW) + r.setW) % r.setW;
+    r.track.style.transform = `translate3d(${-r.x}px,0,0)`;
+  }
+  function stepMarquee(now) {
+    const dt = mq.last ? Math.min(0.05, (now - mq.last) / 1000) : 0;
+    mq.last = now;
+    if (mq.visible && !document.hidden) {
+      mq.rows.forEach((r) => {
+        if (r.drag) return;
+        // A released drag coasts and settles back into the drift.
+        r.vel *= Math.pow(0.04, dt);
+        r.x += (-r.dir * MQ_SPEED + r.vel) * dt;
+        place(r);
+      });
+    }
+    mq.raf = requestAnimationFrame(stepMarquee);
+  }
+  function wireDrag(r) {
+    const row = r.row;
+    row.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0) return;
+      r.drag = { x0: e.clientX, start: r.x, moved: false, lastX: e.clientX, lastT: performance.now(), id: e.pointerId };
+      r.vel = 0;
+    });
+    row.addEventListener("pointermove", (e) => {
+      const d = r.drag;
+      if (!d || d.id !== e.pointerId) return;
+      const dx = e.clientX - d.x0;
+      if (!d.moved && Math.abs(dx) > 6) { d.moved = true; row.classList.add("is-dragging"); try { row.setPointerCapture(e.pointerId); } catch (err) {} }
+      if (!d.moved) return;
+      const now = performance.now();
+      const v = -(e.clientX - d.lastX) / Math.max(1, now - d.lastT) * 1000;
+      r.vel = r.vel * 0.6 + v * 0.4;
+      d.lastX = e.clientX; d.lastT = now;
+      r.x = d.start - dx;
+      place(r);
+    });
+    const end = (e) => {
+      const d = r.drag;
+      if (!d || (e.pointerId !== undefined && d.id !== e.pointerId)) return;
+      r.drag = null;
+      row.classList.remove("is-dragging");
+      if (d.moved) {
+        r.vel = Math.max(-2500, Math.min(2500, r.vel + r.dir * MQ_SPEED));
+        r.dragEnd = performance.now(); // the click that follows a drag must not open the tile
+      } else r.vel = 0;
     };
-    comp.update();
-    return comp;
+    row.addEventListener("pointerup", end);
+    row.addEventListener("pointercancel", end);
+    row.addEventListener("dragstart", (e) => e.preventDefault());
+    row.addEventListener("click", (e) => { if (r.dragEnd && performance.now() - r.dragEnd < 300) { e.preventDefault(); e.stopPropagation(); } }, true);
   }
-  function fitDemoCard() { if (home.demo) fitPhone(home.demo.phone, $(".fcard-art", home.demo.el), 340, true); }
 
   function renderHero() {
-    const pr = P.profile;
     $("#hero-text").innerHTML = `
       <div>
         <h1 class="thesis" id="hero-h">${T(P.profile.headline)}</h1>
       </div>`;
-    const feed = $("#ftrack");
-    feed.setAttribute("aria-label", L("featured"));
-    const dp = byId[DEMO_PROJECT];
-    if (!home.built) {
-      feed.innerHTML = projects.map((p) => cardHTML(p) + (dp && dp.demo && p.id === dp.id ? demoCardHTML(p) : "")).join("") + moreCardHTML();
-      const li = $("#card-demo");
-      if (li) home.demo = attachDemo(li, dp);
-      if ("ResizeObserver" in window && home.demo) new ResizeObserver(fitDemoCard).observe($(".fcard-art", home.demo.el));
-    } else {
-      projects.forEach((p) => { const old = $("#card-" + p.id); if (old) old.outerHTML = cardHTML(p); });
-      const more = $("#card-more"); if (more) more.outerHTML = moreCardHTML();
-      if (home.demo) home.demo.update();
-    }
-    requestAnimationFrame(fitDemoCard);
+    $("#work-head").innerHTML = `<h2 class="h2" id="work-h">${esc(N("work"))}</h2>
+      <a class="more-link" href="work.html"><span>${esc(L("seeAll"))}</span>${ICON.chev}</a>`;
+    if (!home.built) buildMarquee();
+    else $$(".mq-tile").forEach((a) => { const t = a.getAttribute("href").split("#")[1]; const p = byId[t]; if (p) { a.setAttribute("aria-label", shortOf(p)); a.title = shortOf(p); } });
   }
 
   /* ------------------------------------------------------------ About */
@@ -1004,7 +1036,7 @@
   window.addEventListener("hashchange", () => { if (PAGE === "work") routeWork(); });
   window.addEventListener("resize", () => {
     layoutTopNav();
-    if (PAGE === "home") fitDemoCard();
+    if (PAGE === "home") { clearTimeout(mq.rt); mq.rt = setTimeout(() => mq.rows.forEach(fillRow), 150); }
     else if (PAGE === "work") fitShortTitle();
   });
 
@@ -1023,5 +1055,5 @@
   writeTokens();
   renderAll();
   if (PAGE === "work") routeWork();
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { layoutTopNav(); if (PAGE === "home") fitDemoCard(); else if (PAGE === "work") fitShortTitle(); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { layoutTopNav(); if (PAGE === "work") fitShortTitle(); });
 })();
