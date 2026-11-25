@@ -815,12 +815,12 @@ window.PORTFOLIO = {
       { p: "cj", src: "shared/img/mq/cj-badge.webp", ratio: 0.72 },
       { p: "los", src: "shared/img/mq/los-cover.webp", ratio: 1.78 },
       { p: "uai", video: "shared/img/mq/uai.mp4", poster: "shared/img/mq/uai-poster.webp", ratio: 0.72 },
-      { p: "uniway", demo: "shared/demo/uniway/frames/tour.webp", ratio: 1.3 }
+      { p: "smeal", demo: "shared/demo/smeal/frames/tour.webp", ratio: 1.3 }
     ],
     [
       { p: "smeal", src: "shared/img/smeal-hero.webp", ratio: 1.5 },
       { p: "emg", src: "shared/img/emg-poster-1.webp", ratio: 1.4, pos: "top" },
-      { p: "smeal", demo: "shared/demo/smeal/frames/tour.webp", ratio: 1.3 },
+      { p: "uniway", demo: "shared/demo/uniway/frames/tour.webp", ratio: 1.3 },
       { p: "emg", src: "shared/docs/emg-paper/p1.webp", ratio: 0.75, pos: "top" },
       { p: "shoulder", src: "shared/img/ergo-pose.webp", ratio: 2.2, fit: "contain" }
     ]
